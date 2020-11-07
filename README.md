@@ -4,7 +4,8 @@ This readme contains information on accessing the shared materials for the JASN 
 
 
 # Whole slide images
-To view the CNN segmentation on whole slide images, you must have Aperio ImageScope (https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope/) installed on your computer. Then, simply place the whole slide image (.svs file) and its corresponding annotations (.xml file) in the same directory on your computer. Upon opening the .svs file with ImageScope, you will see the CNN predictions overlaid on the whole slide. We provide some example pre-generated segmentations on whole slide images here: https://buffalo.box.com/s/thlo5vry0ii8sutvke9bmva0gm5aos0e.
+To view the CNN segmentation on whole slide images, you must have Aperio ImageScope (https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope/) installed on your computer. Then, simply place the whole slide image (.svs file) and its corresponding annotations (.xml file) in the same directory on your computer. Upon opening the .svs file with ImageScope, you will see the CNN predictions overlaid on the whole slide. We provide some example pre-generated segmentations on whole slide images here: https://buffalo.box.com/s/thlo5vry0ii8sutvke9bmva0gm5aos0e. These segmentation outputs were morphologically post-processed to remove IFTA regions with size < 1730µm<sup>2</sup> glomerular regions with size < 1500µm<sup>2</sup> from the whole slide mask.
+
 
 
 # Performing segmentation on new data
@@ -30,4 +31,4 @@ From a terminal prompt, while inside the directory that contains "segmentation_s
 
     python segmentation_school.py --option predict --project your_project_name --one_network True --encoder_name deeplab --classNum 4 --boxSizeHR 3000 --overlap_percentHR 0.5
 
-Adapt the boxSizeHR parameter to a lower value if your GPU does not have enough memory, and use --gpu 0, --gpu 1, etc to change which device on your computer to use for network prediction (out of range device numbers default to the CPU). When the algorithms have finished processing a slide, a new folder will be created: your_project_name/TRAINING_data/0/Predicted_XMLs. Inside, there will be .xml files which correspond to whole slide predictions for each .svs file inside the TRAINING_data/0/ folder. The shared segmentation files found at the link above were morphologically post-processed to remove IFTA regions with size < 1730µm<sup>2</sup> glomerular regions with size < 1500µm<sup>2</sup>.
+Adapt the boxSizeHR parameter to a lower value if your GPU does not have enough memory, and use --gpu 0, --gpu 1, etc to change which device on your computer to use for network prediction (out of range device numbers default to the CPU). When the algorithms have finished processing a slide, a new folder will be created: your_project_name/TRAINING_data/0/Predicted_XMLs. Inside, there will be .xml files which correspond to whole slide predictions for each .svs file inside the TRAINING_data/0/ folder.
