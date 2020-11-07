@@ -13,7 +13,7 @@ Before segmenting your own whole slides, you will need to:
 1) Configure HAIL (https://github.com/SarderLab/H-AI-L) and its dependencies on your computer that will perform the segmentation
 2) Download the pre-trained model file available at https://buffalo.box.com/s/thlo5vry0ii8sutvke9bmva0gm5aos0e 
 
-After everything is installed, navigate to the directory where you have installed the HAIL and call the following command:
+After dependencies are installed, navigate to the directory where you have downloaded the HAIL codes and call the following command:
 
 
     python segmentation_school.py --option new --project your_project_name
