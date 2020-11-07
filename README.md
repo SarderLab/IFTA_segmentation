@@ -1,4 +1,4 @@
-# IFTA_segmentation
+# IFTA and glomerulosclerosis segmentation
 
 This readme contains information on accessing the shared materials for the JASN manuscript entitled Automated Computational Detection of Interstitial Fibrosis, Tubular Atrophy, and Glomerulosclerosis, submitted to JASN in November 2020. Shared materials include a pre-trained CNN model and corresponding codes to perform whole slide segmentation of IFTA and glomerulosclerosis on new renal biopsies. Also included are example whole slide images and their CNN segmented output.
 
