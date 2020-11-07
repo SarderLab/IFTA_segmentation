@@ -15,7 +15,9 @@ Before segmenting your own whole slides, you will need to:
 
 After everything is installed, navigate to the directory where you have installed the HAIL and call the following command:
 
-python segmentation_school.py --option new --project your_project_name
+
+    python segmentation_school.py --option new --project your_project_name
+
 
 Where --option tells HAIL to create a new directory for a new project which has name specified by --project
 
@@ -26,6 +28,6 @@ Go back up to the directory "your_project_name". Find the folder TRAINING_data/0
 
 From a terminal prompt, while inside the directory that contains "segmentation_school.py" (i.e., where the HAIL codes are downloaded), call the following command:
 
-python segmentation_school.py --option predict --project your_project_name --one_network True --encoder_name deeplab --classNum 4 --boxSizeHR 3000 --overlap_percentHR
+    python segmentation_school.py --option predict --project your_project_name --one_network True --encoder_name deeplab --classNum 4 --boxSizeHR 3000 --overlap_percentHR 0.5
 
-Adapt the boxSizeHR parameter to a lower value if your GPU does not have enough memory. The shared segmentation files found at the link above were morphologically post-processed to remove IFTA regions < 1730µm <sup>2</sup> in size
+Adapt the boxSizeHR parameter to a lower value if your GPU does not have enough memory. The shared segmentation files found at the link above were morphologically post-processed to remove IFTA regions with size < 1730µm<sup>2</sup> glomerular regions with size < 1500µm<sup>2</sup>.
