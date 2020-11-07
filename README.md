@@ -4,7 +4,7 @@ This readme contains information on accessing the shared materials for the JASN 
 
 
 # Whole slide images
-To view the CNN segmentationon whole slide images, you must have Aperio ImageScope (https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope/) installed on your computer. Then, simply place the whole slide image (.svs file) and its corresponding annotations (.xml file) in the same directory on your computer. Upon opening the .svs file with ImageScope, you will see the CNN predictions overlaid on the whole slide. We provide some example pre-generated segmentations on whole slide images here: https://buffalo.box.com/s/thlo5vry0ii8sutvke9bmva0gm5aos0e.
+To view the CNN segmentation on whole slide images, you must have Aperio ImageScope (https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope/) installed on your computer. Then, simply place the whole slide image (.svs file) and its corresponding annotations (.xml file) in the same directory on your computer. Upon opening the .svs file with ImageScope, you will see the CNN predictions overlaid on the whole slide. We provide some example pre-generated segmentations on whole slide images here: https://buffalo.box.com/s/thlo5vry0ii8sutvke9bmva0gm5aos0e.
 
 
 # Performing segmentation on new data
