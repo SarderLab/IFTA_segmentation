@@ -267,6 +267,8 @@ def restart_line(): # for printing chopped image labels in command line
 
 def getWsi(path):  # imports a WSI
     from tiffslide import TiffSlide
+    #import openslide
+    #slide = openslide.OpenSlide(path)
     slide = TiffSlide(path)
     return slide
 
@@ -495,7 +497,7 @@ def xml_suey(wsiMask, dirs, args, classNum, downsample):
 def get_contour_points(mask, args, downsample, offset={'X': 0,'Y': 0}):
     # returns a dict pointList with point 'X' and 'Y' values
     # input greyscale binary image
-    _, maskPoints, contours = cv2.findContours(np.array(mask), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
+    maskPoints, contours = cv2.findContours(np.array(mask), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
     pointsList = []
 
     for j in np.array(range(len(maskPoints))):

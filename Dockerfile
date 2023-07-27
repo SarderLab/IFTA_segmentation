@@ -51,8 +51,8 @@ RUN apt-get update && \
     python2.7-dev \
     python-tk \
     # We can't go higher than 3.7 and use tensorflow 1.x \
-    python3.5-dev \
-    python3.5-distutils \
+    python3.7-dev \
+    python3.7-distutils \
     python3-tk \
     software-properties-common \
     libssl-dev \
@@ -91,8 +91,8 @@ WORKDIR /
 #Make a specific version of python the default and install pip
 RUN rm -f /usr/bin/python && \
     rm -f /usr/bin/python3 && \
-    ln `which python3.5` /usr/bin/python && \
-    ln `which python3.5` /usr/bin/python3 && \
+    ln `which python3.7` /usr/bin/python && \
+    ln `which python3.7` /usr/bin/python3 && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python get-pip.py && \
     rm get-pip.py && \
@@ -107,7 +107,7 @@ RUN which  python && \
 #     rm get-pip.py
 
 ENV build_path=$PWD/build
-
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # HistomicsTK sepcific
 
 # copy HistomicsTK files
@@ -130,7 +130,7 @@ WORKDIR $ifta_path
 
 RUN pip install --no-cache-dir --upgrade --ignore-installed pip setuptools && \
     pip install --no-cache-dir .  && \
-    pip install --no-cache-dir 'tensorflow==1.7.0' && \
+    pip install --no-cache-dir 'tensorflow==1.15' && \
     # Install large_image memcached extras \
     #pip install --no-cache-dir 'large-image[memcached]' && \
     # Install HistomicsTK \
