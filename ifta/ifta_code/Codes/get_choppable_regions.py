@@ -1,6 +1,8 @@
 
 import numpy as np
-from getWsi import getWsi
+import sys
+sys.path.append('..')
+from ifta_code.Codes.getWsi import getWsi
 from skimage.filters import threshold_otsu
 from skimage.morphology import binary_closing, disk, remove_small_objects,label
 from scipy.ndimage.morphology import binary_fill_holes

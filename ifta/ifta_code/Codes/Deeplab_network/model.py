@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import numpy as np
-import tensorflow as tf
+import tensorflow  as tf
 from PIL import Image
 
 from network import *

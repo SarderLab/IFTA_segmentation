@@ -8,7 +8,9 @@
 # start from nvidia/cuda 10.0
 # FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 #FROM nvidia/cuda:10.2-base-ubuntu18.04
-FROM nvidia/cuda:11.1.1-base-ubuntu18.04
+# FROM nvidia/cuda:11.1.1-base-ubuntu18.04
+# LABEL com.nvidia.volumes.needed="nvidia_driver"
+FROM tensorflow/tensorflow:1.15.4-gpu-py3
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 
 LABEL maintainer="Sayat Mimar - Sarder Lab. <sayat.mimar@ufl.edu>"
@@ -49,8 +51,8 @@ RUN apt-get update && \
     python2.7-dev \
     python-tk \
     # We can't go higher than 3.7 and use tensorflow 1.x \
-    python3.8-dev \
-    python3.8-distutils \
+    python3.5-dev \
+    python3.5-distutils \
     python3-tk \
     software-properties-common \
     libssl-dev \
@@ -89,8 +91,8 @@ WORKDIR /
 #Make a specific version of python the default and install pip
 RUN rm -f /usr/bin/python && \
     rm -f /usr/bin/python3 && \
-    ln `which python3.8` /usr/bin/python && \
-    ln `which python3.8` /usr/bin/python3 && \
+    ln `which python3.5` /usr/bin/python && \
+    ln `which python3.5` /usr/bin/python3 && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python get-pip.py && \
     rm get-pip.py && \
@@ -128,7 +130,7 @@ WORKDIR $ifta_path
 
 RUN pip install --no-cache-dir --upgrade --ignore-installed pip setuptools && \
     pip install --no-cache-dir .  && \
-    # pip install --no-cache-dir 'tensorflow<2' && \
+    pip install --no-cache-dir 'tensorflow==1.7.0' && \
     # Install large_image memcached extras \
     #pip install --no-cache-dir 'large-image[memcached]' && \
     # Install HistomicsTK \
@@ -140,7 +142,7 @@ RUN pip install --no-cache-dir --upgrade --ignore-installed pip setuptools && \
 
     pip install --no-cache-dir tensorboard cmake onnx && \
 
-    pip install --no-cache-dir torch==1.10  torchaudio==0.10 torchvision==0.11.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html && \
+    #pip install --no-cache-dir torch==1.10  torchaudio==0.10 torchvision==0.11.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html && \
 
     #pip install --no-cache-dir 'git+https://github.com/facebookresearch/fvcore' && \
 

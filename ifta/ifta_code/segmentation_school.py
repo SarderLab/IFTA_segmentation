@@ -44,10 +44,10 @@ def main(args):
     # for teaching young segmentations networks
     starttime = time.time()
 
-    if args.project == ' ':
-        print('Please specify the project name: \n\t--project [folder]')
+    # if args.project == ' ':
+    #     print('Please specify the project name: \n\t--project [folder]')
 
-    elif args.option in ['new', 'New']:
+    if args.option in ['new', 'New']:
         initFolder(args=args)
         savetime(args=args, starttime=starttime)
     elif args.option in ['train', 'Train']:

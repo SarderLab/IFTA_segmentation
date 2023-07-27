@@ -22,7 +22,7 @@ import json
 #sys.path.append(os.getcwd()+'/Codes')
 sys.path.append('..')
 
-from ifta_code.Codes.IterativeTraining import get_num_classes
+from ifta_code.Codes.xml_to_mask import get_num_classes
 from ifta_code.Codes.get_choppable_regions import get_choppable_regions
 from ifta_code.Codes.get_network_performance import get_perf
 
@@ -169,6 +169,7 @@ def predict_xml(args, dirs, wsi, iteration):
         dirs['fileID'] = fileID
         print('Chop SUEY!\n')
         print(dirs)
+        print(test_num_steps)
     else:
         basename = os.path.splitext(wsi)[0]
 
@@ -194,7 +195,7 @@ def predict_xml(args, dirs, wsi, iteration):
     test_step = get_test_step(modeldir)
     print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\033[0;37;40m"+"\n\n")
     
-    call(['python3.5', args.base_dir+'/Codes/Deeplab_network/main.py',
+    call(['python3', '/ifta/ifta/ifta_code/Codes/Deeplab_network/main.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
@@ -441,7 +442,8 @@ def un_suey(dirs, args):  # reconstruct wsi from predicted masks
 
         # populate wsiMask with max
         #print(np.shape(wsiMask))
-        wsiMask[yStart:yStop, xStart:xStop] = np.maximum(mask_part, mask).astype(np.uint8)
+        #wsiMask[yStart:yStop, xStart:xStop] = np.maximum(mask_part, mask).astype(np.uint8)
+        wsiMask[yStart:yStop, xStart:xStop] = np.maximum(mask_part, mask, dtype='uint8')
         #wsiMask[yStart:yStop, xStart:xStop] = np.ones([yStop-yStart, xStop-xStart])
 
     return wsiMask
@@ -458,7 +460,8 @@ def xml_suey(wsiMask, dirs, args, classNum, downsample):
         # print output
         print('\t working on: annotationID ' + str(value))
         # get only 1 class binary mask
-        binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
+        #binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
+        binary_mask = np.zeros(np.shape(wsiMask), dtype='uint8')
         binary_mask[wsiMask == value] = 1
 
         # add mask to xml

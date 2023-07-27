@@ -1,6 +1,8 @@
 import argparse
 import os
 import tensorflow as tf
+import sys
+sys.path.append('..')
 from ifta_code.Codes.Deeplab_network.model import Model
 
 
