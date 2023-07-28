@@ -43,8 +43,8 @@
     </double>
     <directory>
       <name>model</name>
-      <label>model</label>
-      <description>model</description>
+      <label>model directory</label>
+      <description>model directory</description>
       <channel>input</channel>
       <index>4</index>
     </directory>

@@ -108,9 +108,9 @@ RUN which  python && \
 
 ENV build_path=$PWD/build
 ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-# HistomicsTK sepcific
+# IFTASegmentation sepcific
 
-# copy HistomicsTK files
+# copy IFTASegmentation files
 ENV ifta_path=$PWD/ifta
 RUN mkdir -p $ifta_path
 
@@ -123,7 +123,6 @@ RUN apt-get update && \
 COPY . $ifta_path/
 WORKDIR $ifta_path
 
-# Install HistomicsTK and its dependencies
 #   Upgrade setuptools, as the version in Conda won't upgrade cleanly unless it
 # is ignored.
 
