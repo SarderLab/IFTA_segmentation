@@ -1,0 +1,1 @@
+singularity exec IFTA.sif python3 segmentation_school.py --option predict --project TxR01 --encoder_name deeplab --one_network true --classNum 1
