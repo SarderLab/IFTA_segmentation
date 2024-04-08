@@ -13,7 +13,9 @@ Clone the IFTA_segmentation repository(https://github.com/SarderLab/IFTA_segment
 
 
 create a folder with the project name specified in the slurm file. For example if project name is 'TxR01' create '/orange/pinaki.sarder/sdevarasetty/IFTA_segmentation/TxR01'
+
 In '/orange/pinaki.sarder/sdevarasetty/IFTA_segmentation/TxR01' create 'IFTA_segmentation/TxR01/TRAINNING_data/0' and put the whole slide images for prediction
+
 create '/orange/pinaki.sarder/sdevarasetty/IFTA_segmentation/TxR01/TRAINNING_data/Predited_XMLs' to save the output annotation files
 
 
@@ -21,4 +23,5 @@ Create a MODELS directory '/orange/pinaki.sarder/sdevarasetty/IFTA-Jeong-Running
 
 
 To run the code
+    
     sbatch run.sh
