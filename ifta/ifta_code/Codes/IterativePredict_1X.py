@@ -26,6 +26,9 @@ from ifta_code.Codes.xml_to_mask import get_num_classes
 from ifta_code.Codes.get_choppable_regions import get_choppable_regions
 from ifta_code.Codes.get_network_performance import get_perf
 
+Image.MAX_IMAGE_PIXELS = None
+
+
 """
 Pipeline code to segment regions from WSI
 
