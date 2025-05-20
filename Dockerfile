@@ -138,13 +138,9 @@ RUN pip install --no-cache-dir --upgrade --ignore-installed pip setuptools && \
     #pip install --no-cache-dir 'tf-slim>=1.1.0' && \
     # Install pillow_lut \
     #pip install --no-cache-dir 'pillow-lut' && \
-
     pip install --no-cache-dir tensorboard cmake onnx && \
-
     #pip install --no-cache-dir torch==1.10  torchaudio==0.10 torchvision==0.11.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html && \
-
     #pip install --no-cache-dir 'git+https://github.com/facebookresearch/fvcore' && \
-
     #git clone https://github.com/facebookresearch/detectron2 detectron2_repo && \
     #git clone https://github.com/facebookresearch/detectron2.git && \
     python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.10/index.html && \
@@ -178,7 +174,8 @@ RUN python -c "from matplotlib import pylab"
 
 # define entrypoint through which all CLIs can be run
 WORKDIR $ifta_path/ifta/cli
-
+# entrypoint for singularity
+LABEL entry_path=$ifta_path/ifta/cli
 # Test our entrypoint.  If we have incompatible versions of numpy and
 # openslide, one of these will fail
 RUN python -m slicer_cli_web.cli_list_entrypoint --list_cli
