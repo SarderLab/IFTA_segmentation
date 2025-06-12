@@ -1,0 +1,28 @@
+# git ignore for python
+
+# Byte-compiled / optimized / DLL files
+__pycache__/*
+*/__pycache__
+*.py[cod]
+*$py.class
+# C extensions
+*.so
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib/
+env/*
+*.jpeg
+*.txt
+*.pyc
+cpython-*.pyc
+settings.json
+.DS_Store
+__pycache__
+Codes/__pycache__
+TxR01/*
+.python-version
