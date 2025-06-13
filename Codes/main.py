@@ -115,4 +115,4 @@ if __name__ == '__main__':
 
 	# Choose which gpu or cpu to use
 	os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-	tf.app.run()
+	main(args=args)

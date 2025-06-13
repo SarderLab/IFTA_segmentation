@@ -1,154 +1,325 @@
-# Deeplab v2 ResNet for Semantic Image Segmentation
+# DeepLab: Deep Labelling for Semantic Image Segmentation
 
-This is an (re-)implementation of [DeepLab v2 (ResNet-101)](http://liangchiehchen.com/projects/DeepLabv2_resnet.html) in TensorFlow for semantic image segmentation on the [PASCAL VOC 2012 dataset](http://host.robots.ox.ac.uk/pascal/VOC/). We refer to [DrSleep's implementation](https://github.com/DrSleep/tensorflow-deeplab-resnet) (Many thanks!). We do not use tf-to-caffe packages like kaffe so you only need TensorFlow 1.3.0+ to run this code.
+**To new and existing DeepLab users**: We have released a unified codebase for
+dense pixel labeling tasks in TensorFlow2 at https://github.com/google-research/deeplab2.
+Please consider switching to the newer codebase for better support. 
 
-The deeplab pre-trained ResNet-101 ckpt files (pre-trained on MSCOCO) are provided by DrSleep -- [here](https://drive.google.com/drive/folders/0B_rootXHuswsZ0E4Mjh1ZU5xZVU). Thanks again!
+DeepLab is a state-of-art deep learning model for semantic image segmentation,
+where the goal is to assign semantic labels (e.g., person, dog, cat and so on)
+to every pixel in the input image. Current implementation includes the following
+features:
 
-Created by [Zhengyang Wang](http://www.eecs.wsu.edu/~zwang6/) and [Shuiwang Ji](http://www.eecs.wsu.edu/~sji/) at Washington State University.
+1.  DeepLabv1 [1]: We use *atrous convolution* to explicitly control the
+    resolution at which feature responses are computed within Deep Convolutional
+    Neural Networks.
 
-## Update
+2.  DeepLabv2 [2]: We use *atrous spatial pyramid pooling* (ASPP) to robustly
+    segment objects at multiple scales with filters at multiple sampling rates
+    and effective fields-of-views.
 
-**12/13/2017**:
+3.  DeepLabv3 [3]: We augment the ASPP module with *image-level feature* [5, 6]
+    to capture longer range information. We also include *batch normalization*
+    [7] parameters to facilitate the training. In particular, we applying atrous
+    convolution to extract output features at different output strides during
+    training and evaluation, which efficiently enables training BN at output
+    stride = 16 and attains a high performance at output stride = 8 during
+    evaluation.
 
-* Now the test code will output the mIoU as well as the IoU for each class.
+4.  DeepLabv3+ [4]: We extend DeepLabv3 to include a simple yet effective
+    decoder module to refine the segmentation results especially along object
+    boundaries. Furthermore, in this encoder-decoder structure one can
+    arbitrarily control the resolution of extracted encoder features by atrous
+    convolution to trade-off precision and runtime.
 
-**12/12/2017**:
+If you find the code useful for your research, please consider citing our latest
+works:
 
-* Add 'predict' function, you can use '--option=predict' to save your outputs now (both the true prediction where each pixel is between 0 and 20 and the visual one where each class has its own color).
-
-* Add multi-scale training, testing and predicting. Check main_msc.py and model_msc.py and use them just as main.py and model.py.
-
-* Add plot_training_curve.py to use the log.txt to make plots of training curve.
-
-* Now this is a 'full' (re-)implementation of [DeepLab v2 (ResNet-101)](http://liangchiehchen.com/projects/DeepLabv2_resnet.html) in TensorFlow. Thank you for the support. You are welcome to report your settings and results as well as any bug!
-
-**11/09/2017**:
-
-* The new version enables using original ImageNet pre-trained ResNet models (without pre-training on MSCOCO). You may change arguments ('encoder_name' and 'pretrain_file') in main.py to use corresponding pre-trained models. The original pre-trained ResNet-101 ckpt files are provided by tensorflow officially -- [res101](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz) and [res50](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz).
-
-* To help those who want to use this model on the CityScapes dataset, I shared the corresponding txt files and the python file which generates them. Note that you need to use tools [here](https://github.com/mcordts/cityscapesScripts) to generate labels with trainID first. Hope it would be helpful. Do not forget to change IMG_MEAN in model.py and other settings in main.py.
-
-* 'is_training' argument is removed and 'self._batch_norm' changes. Basically, for a small batch size, it is better to keep the statistics of the BN layers (running means and variances) frozen, and to not update the values provided by the pre-trained model by setting 'is_training=False'. Note that is_training=False still updates BN parameters gamma (scale) and beta (offset) if they are presented in var_list of the optimiser definition. Set 'trainable=False' in BN fuctions to remove them from trainable_variables.
-
-* Add 'phase' argument in network.py for future development. 'phase=True' means training. It is mainly for controlling batch normalization (if any) in the non-pre-trained part.
-```
-Example: If you have a batch normalization layer in the decoder, you should use 
-
-outputs = self._batch_norm(inputs, name='g_bn1', is_training=self.phase, activation_fn=tf.nn.relu, trainable=True)
-```
-* Some changes to make the code more readable and easy to modify for future research.
-
-* I plan to add 'predict' function to enable saving predicted results for offline evaluation, post-processing, etc.
-
-## System requirement
-
-#### Programming language
-```
-Python 3.5
-```
-#### Python Packages
-```
-tensorflow-gpu 1.3.0
-```
-## Configure the network
-
-All network hyperparameters are configured in main.py.
-
-#### Training
-```
-num_steps: how many iterations to train
-
-save_interval: how many steps to save the model
-
-random_seed: random seed for tensorflow
-
-weight_decay: l2 regularization parameter
-
-learning_rate: initial learning rate
-
-power: parameter for poly learning rate
-
-momentum: momentum
-
-encoder_name: name of pre-trained model, res101, res50 or deeplab
-
-pretrain_file: the initial pre-trained model file for transfer learning
-
-data_list: training data list file
-
-grad_update_every (msc only): accumulate the gradients for how many steps before updating weights. Note that in the msc case, this is actually the true training batch size.
-```
-#### Testing/Validation
-```
-valid_step: checkpoint number for testing/validation
-
-valid_num_steps: = number of testing/validation samples
-
-valid_data_list: testing/validation data list file
-```
-#### Data
-```
-data_dir: data directory
-
-batch_size: training batch size
-
-input height: height of input image
-
-input width: width of input image
-
-num_classes: number of classes
-
-ignore_label: label pixel value that should be ignored
-
-random_scale: whether to perform random scaling data-augmentation
-
-random_mirror: whether to perform random left-right flipping data-augmentation
-```
-#### Log
-```
-modeldir: where to store saved models
-
-logfile: where to store training log
-
-logdir: where to store log for tensorboard
-```
-## Training and Testing
-
-#### Start training
-
-After configuring the network, we can start to train. Run
-```
-python main.py
-```
-The training of Deeplab v2 ResNet will start.
-
-#### Training process visualization
-
-We employ tensorboard for visualization.
+*   DeepLabv3+:
 
 ```
-tensorboard --logdir=log --port=6006
+@inproceedings{deeplabv3plus2018,
+  title={Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation},
+  author={Liang-Chieh Chen and Yukun Zhu and George Papandreou and Florian Schroff and Hartwig Adam},
+  booktitle={ECCV},
+  year={2018}
+}
 ```
 
-You may visualize the graph of the model and (training images + groud truth labels + predicted labels).
-
-To visualize the training loss curve, write your own script to make use of the training log.
-
-#### Testing and prediction
-
-Select a checkpoint to test/validate your model in terms of pixel accuracy and mean IoU.
-
-Fill the valid_step in main.py with the checkpoint you want to test. Change valid_num_steps and valid_data_list accordingly. Run
+*   MobileNetv2:
 
 ```
-python main.py --option=test
+@inproceedings{mobilenetv22018,
+  title={MobileNetV2: Inverted Residuals and Linear Bottlenecks},
+  author={Mark Sandler and Andrew Howard and Menglong Zhu and Andrey Zhmoginov and Liang-Chieh Chen},
+  booktitle={CVPR},
+  year={2018}
+}
 ```
 
-The final output includes pixel accuracy and mean IoU.
-
-Run
+*   MobileNetv3:
 
 ```
-python main.py --option=predict
+@inproceedings{mobilenetv32019,
+  title={Searching for MobileNetV3},
+  author={Andrew Howard and Mark Sandler and Grace Chu and Liang-Chieh Chen and Bo Chen and Mingxing Tan and Weijun Wang and Yukun Zhu and Ruoming Pang and Vijay Vasudevan and Quoc V. Le and Hartwig Adam},
+  booktitle={ICCV},
+  year={2019}
+}
 ```
-The outputs will be saved in the 'output' folder.
+
+*  Architecture search for dense prediction cell:
+
+```
+@inproceedings{dpc2018,
+  title={Searching for Efficient Multi-Scale Architectures for Dense Image Prediction},
+  author={Liang-Chieh Chen and Maxwell D. Collins and Yukun Zhu and George Papandreou and Barret Zoph and Florian Schroff and Hartwig Adam and Jonathon Shlens},
+  booktitle={NIPS},
+  year={2018}
+}
+
+```
+
+*  Auto-DeepLab (also called hnasnet in core/nas_network.py):
+
+```
+@inproceedings{autodeeplab2019,
+  title={Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic
+Image Segmentation},
+  author={Chenxi Liu and Liang-Chieh Chen and Florian Schroff and Hartwig Adam
+  and Wei Hua and Alan Yuille and Li Fei-Fei},
+  booktitle={CVPR},
+  year={2019}
+}
+
+```
+
+
+In the current implementation, we support adopting the following network
+backbones:
+
+1.  MobileNetv2 [8] and MobileNetv3 [16]: A fast network structure designed
+    for mobile devices.
+
+2.  Xception [9, 10]: A powerful network structure intended for server-side
+    deployment.
+
+3.  ResNet-v1-{50,101} [14]: We provide both the original ResNet-v1 and its
+    'beta' variant where the 'stem' is modified for semantic segmentation.
+
+4.  PNASNet [15]: A Powerful network structure found by neural architecture
+    search.
+
+5.  Auto-DeepLab (called HNASNet in the code): A segmentation-specific network
+    backbone found by neural architecture search.
+
+This directory contains our TensorFlow [11] implementation. We provide codes
+allowing users to train the model, evaluate results in terms of mIOU (mean
+intersection-over-union), and visualize segmentation results. We use PASCAL VOC
+2012 [12] and Cityscapes [13] semantic segmentation benchmarks as an example in
+the code.
+
+Some segmentation results on Flickr images:
+<p align="center">
+    <img src="g3doc/img/vis1.png" width=600></br>
+    <img src="g3doc/img/vis2.png" width=600></br>
+    <img src="g3doc/img/vis3.png" width=600></br>
+</p>
+
+## Contacts (Maintainers)
+
+*   Liang-Chieh Chen, github: [aquariusjay](https://github.com/aquariusjay)
+*   YuKun Zhu, github: [yknzhu](https://github.com/YknZhu)
+*   George Papandreou, github: [gpapan](https://github.com/gpapan)
+*   Hui Hui, github: [huihui-personal](https://github.com/huihui-personal)
+*   Maxwell D. Collins, github: [mcollinswisc](https://github.com/mcollinswisc)
+*   Ting Liu: github: [tingliu](https://github.com/tingliu)
+
+## Tables of Contents
+
+Demo:
+
+*   <a href='https://colab.sandbox.google.com/github/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb'>Colab notebook for off-the-shelf inference.</a><br>
+
+Running:
+
+*   <a href='g3doc/installation.md'>Installation.</a><br>
+*   <a href='g3doc/pascal.md'>Running DeepLab on PASCAL VOC 2012 semantic segmentation dataset.</a><br>
+*   <a href='g3doc/cityscapes.md'>Running DeepLab on Cityscapes semantic segmentation dataset.</a><br>
+*   <a href='g3doc/ade20k.md'>Running DeepLab on ADE20K semantic segmentation dataset.</a><br>
+
+Models:
+
+*   <a href='g3doc/model_zoo.md'>Checkpoints and frozen inference graphs.</a><br>
+
+Misc:
+
+*   Please check <a href='g3doc/faq.md'>FAQ</a> if you have some questions before reporting the issues.<br>
+
+## Getting Help
+
+To get help with issues you may encounter while using the DeepLab Tensorflow
+implementation, create a new question on
+[StackOverflow](https://stackoverflow.com/) with the tag "tensorflow".
+
+Please report bugs (i.e., broken code, not usage questions) to the
+tensorflow/models GitHub [issue
+tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
+with "deeplab".
+
+## License
+
+All the codes in deeplab folder is covered by the [LICENSE](https://github.com/tensorflow/models/blob/master/LICENSE)
+under tensorflow/models. Please refer to the LICENSE for details.
+
+## Change Logs
+
+### March 26, 2020
+* Supported EdgeTPU-DeepLab and EdgeTPU-DeepLab-slim on Cityscapes.
+**Contributor**: Yun Long.
+
+### November 20, 2019
+* Supported MobileNetV3 large and small model variants on Cityscapes.
+**Contributor**: Yukun Zhu.
+
+
+### March 27, 2019
+
+* Supported using different loss weights on different classes during training.
+**Contributor**: Yuwei Yang.
+
+
+### March 26, 2019
+
+* Supported ResNet-v1-18. **Contributor**: Michalis Raptis.
+
+
+### March 6, 2019
+
+* Released the evaluation code (under the `evaluation` folder) for image
+parsing, a.k.a. panoptic segmentation. In particular, the released code supports
+evaluating the parsing results in terms of both the parsing covering and
+panoptic quality metrics. **Contributors**: Maxwell Collins and Ting Liu.
+
+
+### February 6, 2019
+
+* Updated decoder module to exploit multiple low-level features with different
+output_strides.
+
+### December 3, 2018
+
+* Released the MobileNet-v2 checkpoint on ADE20K.
+
+
+### November 19, 2018
+
+* Supported NAS architecture for feature extraction. **Contributor**: Chenxi Liu.
+
+* Supported hard pixel mining during training.
+
+
+### October 1, 2018
+
+* Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
+PASCAL VOC 2012, and Xception-65 COCO pretrained checkpoint (i.e., no PASCAL
+pretrained).
+
+
+### September 5, 2018
+
+* Released Cityscapes pretrained checkpoints with found best dense prediction cell.
+
+
+### May 26, 2018
+
+* Updated ADE20K pretrained checkpoint.
+
+
+### May 18, 2018
+* Added builders for ResNet-v1 and Xception model variants.
+* Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
+* Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
+
+
+### March 22, 2018
+
+* Released checkpoints using MobileNet-V2 as network backbone and pretrained on
+PASCAL VOC 2012 and Cityscapes.
+
+
+### March 5, 2018
+
+* First release of DeepLab in TensorFlow including deeper Xception network
+backbone. Included checkpoints that have been pretrained on PASCAL VOC 2012
+and Cityscapes.
+
+## References
+
+1.  **Semantic Image Segmentation with Deep Convolutional Nets and Fully Connected CRFs**<br />
+    Liang-Chieh Chen+, George Papandreou+, Iasonas Kokkinos, Kevin Murphy, Alan L. Yuille (+ equal
+    contribution). <br />
+    [[link]](https://arxiv.org/abs/1412.7062). In ICLR, 2015.
+
+2.  **DeepLab: Semantic Image Segmentation with Deep Convolutional Nets,**
+    **Atrous Convolution, and Fully Connected CRFs** <br />
+    Liang-Chieh Chen+, George Papandreou+, Iasonas Kokkinos, Kevin Murphy, and Alan L Yuille (+ equal
+    contribution). <br />
+    [[link]](http://arxiv.org/abs/1606.00915). TPAMI 2017.
+
+3.  **Rethinking Atrous Convolution for Semantic Image Segmentation**<br />
+    Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam.<br />
+    [[link]](http://arxiv.org/abs/1706.05587). arXiv: 1706.05587, 2017.
+
+4.  **Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation**<br />
+    Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, Hartwig Adam.<br />
+    [[link]](https://arxiv.org/abs/1802.02611). In ECCV, 2018.
+
+5.  **ParseNet: Looking Wider to See Better**<br />
+    Wei Liu, Andrew Rabinovich, Alexander C Berg<br />
+    [[link]](https://arxiv.org/abs/1506.04579). arXiv:1506.04579, 2015.
+
+6.  **Pyramid Scene Parsing Network**<br />
+    Hengshuang Zhao, Jianping Shi, Xiaojuan Qi, Xiaogang Wang, Jiaya Jia<br />
+    [[link]](https://arxiv.org/abs/1612.01105). In CVPR, 2017.
+
+7.  **Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate shift**<br />
+    Sergey Ioffe, Christian Szegedy <br />
+    [[link]](https://arxiv.org/abs/1502.03167). In ICML, 2015.
+
+8.  **MobileNetV2: Inverted Residuals and Linear Bottlenecks**<br />
+    Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen<br />
+    [[link]](https://arxiv.org/abs/1801.04381). In CVPR, 2018.
+
+9.  **Xception: Deep Learning with Depthwise Separable Convolutions**<br />
+    François Chollet<br />
+    [[link]](https://arxiv.org/abs/1610.02357). In CVPR, 2017.
+
+10. **Deformable Convolutional Networks -- COCO Detection and Segmentation Challenge 2017 Entry**<br />
+    Haozhi Qi, Zheng Zhang, Bin Xiao, Han Hu, Bowen Cheng, Yichen Wei, Jifeng Dai<br />
+    [[link]](http://presentations.cocodataset.org/COCO17-Detect-MSRA.pdf). ICCV COCO Challenge
+    Workshop, 2017.
+
+11. **Tensorflow: Large-Scale Machine Learning on Heterogeneous Distributed Systems**<br />
+    M. Abadi, A. Agarwal, et al. <br />
+    [[link]](https://arxiv.org/abs/1603.04467). arXiv:1603.04467, 2016.
+
+12. **The Pascal Visual Object Classes Challenge – A Retrospective,** <br />
+    Mark Everingham, S. M. Ali Eslami, Luc Van Gool, Christopher K. I. Williams, John
+    Winn, and Andrew Zisserma. <br />
+    [[link]](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/). IJCV, 2014.
+
+13. **The Cityscapes Dataset for Semantic Urban Scene Understanding**<br />
+    Cordts, Marius, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler, Rodrigo Benenson, Uwe Franke, Stefan Roth, Bernt Schiele. <br />
+    [[link]](https://www.cityscapes-dataset.com/). In CVPR, 2016.
+
+14. **Deep Residual Learning for Image Recognition**<br />
+    Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. <br />
+    [[link]](https://arxiv.org/abs/1512.03385). In CVPR, 2016.
+
+15. **Progressive Neural Architecture Search**<br />
+    Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan Huang, Kevin Murphy. <br />
+    [[link]](https://arxiv.org/abs/1712.00559). In ECCV, 2018.
+
+16. **Searching for MobileNetV3**<br />
+    Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, Hartwig Adam. <br />
+    [[link]](https://arxiv.org/abs/1905.02244). In ICCV, 2019.

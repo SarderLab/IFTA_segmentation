@@ -111,7 +111,7 @@ def predict_all_xmls(args, dirs, wsi, iteration):
         test_data_list = fileID + '_images' + '.txt'
         print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + str(test_step) + "\033[0;37;40m"+"\n\n")
 
-        call(['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
+        call(['python3', args.base_dir+'/Codes/Deeplab_network/eval.py',
             '--option', 'predict',
             '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
             '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
@@ -155,7 +155,7 @@ def predict_all_xmls(args, dirs, wsi, iteration):
 
         print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + str(test_step) + "\033[0;37;40m"+"\n\n")
 
-        call(['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
+        call(['python3', args.base_dir+'/Codes/Deeplab_network/eval.py',
             '--option', 'predict',
             '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
             '--out_dir', dirs['outDir']+fileID+dirs['final_output_dir'],

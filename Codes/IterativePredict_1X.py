@@ -1,3 +1,4 @@
+import re
 import cv2
 import numpy as np
 import os
@@ -184,7 +185,7 @@ def predict_xml(args, dirs, wsi, iteration):
     test_step = get_test_step(modeldir)
     print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\033[0;37;40m"+"\n\n")
     
-    call(['python3.5', args.base_dir+'/Codes/Deeplab_network/main.py',
+    call(['python3', args.base_dir+'/Codes/Deeplab_network/eval.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
@@ -224,12 +225,15 @@ def predict_xml(args, dirs, wsi, iteration):
 
 def get_iteration(args):
     currentmodels=os.listdir(args.base_dir + '/' + args.project + '/MODELS/')
-
+    currentmodels = [x for x in currentmodels]
+    print(currentmodels, '-----', re.match(r'model\.ckpt-(\d+)', currentmodels[0]))
     if not currentmodels:
         return 'none'
     else:
-        currentmodels=map(int,currentmodels)
-        Iteration=np.max(list(currentmodels))
+        # currentmodels=map(int,currentmodels)
+        # Iteration=np.max(list(currentmodels))
+        Iterations = [int(re.search(r'model\.ckpt-(\d+)', f).group(1)) for f in currentmodels if re.search(r'model\.ckpt-(\d+)', f)]
+        Iteration=np.max(list(Iterations))
         return Iteration
 
 def get_test_step(modeldir):

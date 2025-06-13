@@ -27,7 +27,7 @@ def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
 
 
         binary=(g>0.05).astype('bool')
-        binary2=binary_dilation(binary,selem=diamond(20))
+        binary2=binary_dilation(binary,footprint=diamond(20))
         binary2=binary_fill_holes(binary2)
 
         '''
