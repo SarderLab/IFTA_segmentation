@@ -266,10 +266,10 @@ def restart_line(): # for printing chopped image labels in command line
     sys.stdout.flush()
 
 def getWsi(path):  # imports a WSI
-    from tiffslide import TiffSlide
-    #import openslide
-    #slide = openslide.OpenSlide(path)
-    slide = TiffSlide(path)
+    # from tifffile.tiffslide import TiffSlide
+    import openslide
+    slide = openslide.OpenSlide(path)
+    # slide = TiffSlide(path)
     return slide
 
 def file_len(fname): # get txt file length (number of lines)

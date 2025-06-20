@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import time
 
-#sys.path.append(os.getcwd()+'/Codes')
+# sys.path.append(os.getcwd()+'/Codes')
 sys.path.append('..')
 
 
@@ -53,12 +53,14 @@ def main(args):
     elif args.option in ['train', 'Train']:
         IterateTraining(args=args)
         savetime(args=args, starttime=starttime)
-        assert (args.one_network != ' '), 'You must specify --one_network True for dense prediction or --one_network False for sparse prediction'
+        assert (args.one_network !=
+                ' '), 'You must specify --one_network True for dense prediction or --one_network False for sparse prediction'
 
     elif args.option in ['predict', 'Predict']:
         predict(args=args)
         # savetime(args=args, starttime=starttime)
-        assert (args.one_network != ' '), 'You must specify --one_network True for dense prediction or --one_network False for sparse prediction'
+        assert (args.one_network !=
+                ' '), 'You must specify --one_network True for dense prediction or --one_network False for sparse prediction'
 
     elif args.option in ['validate', 'Validate']:
         validate(args=args)
@@ -76,14 +78,15 @@ def main(args):
 def savetime(args, starttime):
     if args.option in ['new', 'New']:
         with open(args.base_dir + '/' + args.project + '/runtime.txt', 'w') as timefile:
-            timefile.write('option' + '\t' + 'time' + '\t' + 'epochs_LR' + '\t' + 'epochs_HR' + '\t' + 'aug_LR' + '\t' + 'aug_HR' + '\t' + 'overlap_percentLR' + '\t' + 'overlap_percentHR')
+            timefile.write('option' + '\t' + 'time' + '\t' + 'epochs_LR' + '\t' + 'epochs_HR' + '\t' +
+                           'aug_LR' + '\t' + 'aug_HR' + '\t' + 'overlap_percentLR' + '\t' + 'overlap_percentHR')
     if args.option in ['train', 'Train']:
         with open(args.base_dir + '/' + args.project + '/runtime.txt', 'a') as timefile:
-            timefile.write('\n' + args.option + '\t' + str(time.time()-starttime) + '\t' + str(args.epoch_LR) + '\t' + str(args.epoch_HR) + '\t' + 
+            timefile.write('\n' + args.option + '\t' + str(time.time() - starttime) + '\t' + str(args.epoch_LR) + '\t' + str(args.epoch_HR) + '\t' +
                            str(args.aug_LR) + '\t' + str(args.aug_HR) + '\t' + str(args.overlap_percentLR) + '\t' + str(args.overlap_percentHR))
     if args.option in ['predict', 'Predict']:
         with open(args.base_dir + '/' + args.project + '/runtime.txt', 'a') as timefile:
-            timefile.write('\n' + args.option + '\t' + str(time.time()-starttime))
+            timefile.write('\n' + args.option + '\t' + str(time.time() - starttime))
 
 
 if __name__ == '__main__':
@@ -93,13 +96,13 @@ if __name__ == '__main__':
     # School subject
     parser.add_argument('--project', dest='project', default=' ', type=str,
                         help='Starting directory to contain training project')
-    parser.add_argument('--input_files')
+    parser.add_argument('--input_files', dest='input_files', type=str, required=True)
     parser.add_argument('--basedir')
     parser.add_argument('--model')
     parser.add_argument('--girderApiUrl')
     parser.add_argument('--girderToken')
     # option
-    parser.add_argument('--option', dest='option', default=' ', type=str, 
+    parser.add_argument('--option', dest='option', default=' ', type=str,
                         help='option for [new, train, predict, validate]')
     parser.add_argument('--transfer', dest='transfer', default=' ', type=str,
                         help='name of project for transfer learning [pulls the newest model]')
@@ -129,50 +132,50 @@ if __name__ == '__main__':
                         help='number of classes present in the High res training data [USE ONLY IF DIFFERENT FROM LOW RES]')
 
     # Params for cutting wsi #
-    #White level cutoff
+    # White level cutoff
     parser.add_argument('--white_percent', dest='white_percent', default=0.05, type=float,
                         help='white level checkpoint for chopping')
     parser.add_argument('--max_block_dim', dest='max_block_dim', default=2000, type=int,
                         help='white level checkpoint for chopping')
-    #Low resolution parameters
+    # Low resolution parameters
     parser.add_argument('--overlap_percentLR', dest='overlap_percentLR', default=0.5, type=float,
                         help='overlap percentage of low resolution blocks [0-1]')
     parser.add_argument('--boxSizeLR', dest='boxSizeLR', default=450, type=int,
                         help='size of low resolution blocks')
-    parser.add_argument('--downsampleRateLR', dest='downsampleRateLR', default=16,  type=int,
+    parser.add_argument('--downsampleRateLR', dest='downsampleRateLR', default=16, type=int,
                         help='reduce image resolution to 1/downsample rate')
-    #High resolution parameters
-    parser.add_argument('--overlap_percentHR', dest='overlap_percentHR', default=0.5,   type=float,
+    # High resolution parameters
+    parser.add_argument('--overlap_percentHR', dest='overlap_percentHR', default=0.5, type=float,
                         help='overlap percentage of high resolution blocks [0-1]')
-    parser.add_argument('--boxSizeHR', dest='boxSizeHR', default=450,   type=int,
+    parser.add_argument('--boxSizeHR', dest='boxSizeHR', default=450, type=int,
                         help='size of high resolution blocks')
     parser.add_argument('--downsampleRateHR', dest='downsampleRateHR', default=1, type=int,
                         help='reduce image resolution to 1/downsample rate')
 
     # Params for augmenting data #
-    #High resolution
+    # High resolution
     parser.add_argument('--aug_HR', dest='aug_HR', default=3, type=int,
                         help='augment high resolution set this many magnitudes')
-    #Low resolution
+    # Low resolution
     parser.add_argument('--aug_LR', dest='aug_LR', default=15, type=int,
                         help='augment low resolution set this many magnitudes')
-    #Color space transforms
+    # Color space transforms
     parser.add_argument('--hbound', dest='hbound', default=0.05, type=float,
                         help='Gaussian variance defining bounds on Hue shift for HSV color augmentation')
-    parser.add_argument('--lbound', dest='lbound', default=0.025,   type=float,
+    parser.add_argument('--lbound', dest='lbound', default=0.025, type=float,
                         help='Gaussian variance defining bounds on L* gamma shift for color augmentation [alters brightness/darkness of image]')
 
     # Params for training networks #
-    #Low resolution hyperparameters
+    # Low resolution hyperparameters
     parser.add_argument('--CNNbatch_sizeLR', dest='CNNbatch_sizeLR', default=2, type=int,
                         help='Size of batches for training low resolution CNN')
-    #High resolution hyperparameters
+    # High resolution hyperparameters
     parser.add_argument('--CNNbatch_sizeHR', dest='CNNbatch_sizeHR', default=3, type=int,
                         help='Size of batches for training high resolution CNN')
-    #Hyperparameters
+    # Hyperparameters
     parser.add_argument('--epoch_LR', dest='epoch_LR', default=1, type=int,
                         help='training epochs for low resolution network')
-    parser.add_argument('--epoch_HR', dest='epoch_HR', default=1,   type=int,
+    parser.add_argument('--epoch_HR', dest='epoch_HR', default=1, type=int,
                         help='training epochs for high resolution network')
     parser.add_argument('--saveIntervals', dest='saveIntervals', default=10, type=int,
                         help='how many checkpoints get saved durring training')
