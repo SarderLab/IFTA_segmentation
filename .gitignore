@@ -1,0 +1,15 @@
+*.pyc
+__pycache__/
+Codes/__pycache__/*.pyc
+Codes/__pycache__/
+
+log/
+logs/
+BrandonsData/
+KPMP/
+DiagnosticCore/
+DDS_JHU/
+
+
+*.sif
+run.sh

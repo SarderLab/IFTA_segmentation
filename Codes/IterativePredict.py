@@ -37,7 +37,7 @@ def validate(args):
     dirs['final_output_dir'] = '/boundaries/'
     dirs['final_boundary_image_dir'] = '/images/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['crop_dir'] = '/wsi_crops/'
     dirs['save_outputs'] = args.save_outputs
     dirs['modeldir'] = '/MODELS/'
@@ -98,7 +98,7 @@ def predict(args):
     dirs['final_output_dir'] = '/boundaries/'
     dirs['final_boundary_image_dir'] = '/images/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['crop_dir'] = '/wsi_crops/'
     dirs['save_outputs'] = args.save_outputs
     dirs['modeldir'] = '/MODELS/'
@@ -182,7 +182,7 @@ def predict_xml(args, dirs, wsi, iteration):
             dim_x, dim_y=im.size
 
         fileID=basename.split('/')
-        dirs['fileID'] = fileID=fileID[len(fileID)-1]
+        dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
 
     # call DeepLab for prediction (Low resolution)
@@ -195,7 +195,7 @@ def predict_xml(args, dirs, wsi, iteration):
     test_step = get_test_step(modeldir)
     print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + str(test_step) + "\033[0;37;40m"+"\n\n")
 
-    call(['python3.5', args.base_dir+'/Codes/Deeplab_network/main.py',
+    call(['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
@@ -238,7 +238,7 @@ def predict_xml(args, dirs, wsi, iteration):
     test_step = get_test_step(modeldir)
     print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + str(test_step) + "\033[0;37;40m"+"\n\n")
 
-    call(['python3.5', args.base_dir+'/Codes/Deeplab_network/main.py',
+    call(['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['final_output_dir'],
@@ -328,7 +328,7 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     slide=getWsi(wsi)
 
     fileID=basename.split('/')
-    dirs['fileID'] = fileID=fileID[len(fileID)-1]
+    dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
     print('\nchopping ...\n')
 
     # make txt file
@@ -407,7 +407,7 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
             warnings.simplefilter("ignore")
             imsave(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
 
-        f2.write(dirs['chopped_dir'] + dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
+        f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()
         f2.close()
 

@@ -36,7 +36,7 @@ def validate(args):
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['save_outputs'] = args.save_outputs
     dirs['modeldir'] = '/MODELS/'
     dirs['training_data_dir'] = '/TRAINING_data/'
@@ -99,7 +99,7 @@ def predict(args):
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['save_outputs'] = args.save_outputs
     dirs['modeldir'] = '/MODELS/'
     dirs['training_data_dir'] = '/TRAINING_data/'
@@ -133,9 +133,6 @@ def predict(args):
             #    break
             #except:
             #print('!!! Prediction on ' + wsi + ' failed\nmoving on...')
-        print('\n\n\033[92;5mPlease correct the xml annotations found in: \n\t' + dirs['xml_save_dir'])
-        print('\nthen place them in: \n\t'+ args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration) + '/')
-        print('\nand run [--option train]\033[0m\n')
 
 
 def predict_xml(args, dirs, wsi, iteration):
@@ -172,8 +169,9 @@ def predict_xml(args, dirs, wsi, iteration):
             dim_x, dim_y=im.size
 
         fileID=basename.split('/')
-        dirs['fileID'] = fileID=fileID[len(fileID)-1]
+        dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
+
     # call DeepLab for prediction
     print('Segmenting tissue ...\n')
 
@@ -182,19 +180,48 @@ def predict_xml(args, dirs, wsi, iteration):
     test_data_list = fileID + '_images' + '.txt'
     modeldir = args.base_dir + '/' + args.project + dirs['modeldir'] + str(iteration) + '/HR'
     test_step = get_test_step(modeldir)
+
     print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\033[0;37;40m"+"\n\n")
     
-    call(['python3.5', args.base_dir+'/Codes/Deeplab_network/main.py',
+    # Debug: Show the exact command being run
+    batch_size = args.batch_size
+    num_batches = (test_num_steps + batch_size - 1) // batch_size  # Ceiling division
+
+    deeplab_cmd = ['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
         '--test_step', str(test_step),
-        '--test_num_steps', str(test_num_steps),
+        '--test_num_steps', str(num_batches),  # Use number of batches, not number of images
         '--modeldir', modeldir,
         '--data_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
         '--num_classes', str(classNum),
         '--gpu', str(args.gpu),
-        '--encoder_name',args.encoder_name])
+        '--encoder_name',args.encoder_name,
+        '--batch_size', str(batch_size),
+        '--print_color', "\033[1;32;40m"]
+    
+    print("DeepLab command:", ' '.join(deeplab_cmd))
+    print(f"Processing {test_num_steps} images in {num_batches} batches of {batch_size}")
+    return_code = call(deeplab_cmd)
+    print(f"DeepLab process completed with return code: {return_code}")
+    
+    # Check if prediction was successful
+    if return_code != 0:
+        print(f"ERROR: DeepLab prediction failed with return code {return_code}")
+        return
+    
+    # Check how many mask files were generated
+    prediction_dir = dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction'
+    if os.path.exists(prediction_dir):
+        mask_files = glob(prediction_dir + '/*_mask.png')
+        print(f"Generated {len(mask_files)} mask files out of {test_num_steps} expected")
+        if len(mask_files) == 0:
+            print("ERROR: No mask files were generated!")
+            return
+    else:
+        print("ERROR: Prediction directory was not created!")
+        return
 
     # un chop
     print('\nreconstructing wsi map ...\n')
@@ -284,7 +311,7 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
         dim_x, dim_y=im.size
 
     fileID=basename.split('/')
-    dirs['fileID'] = fileID=fileID[len(fileID)-1]
+    dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
     print('\nchopping ...\n')
 
     # make txt file
@@ -369,7 +396,7 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
             warnings.simplefilter("ignore")
             imageio.imwrite(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
 
-        f2.write(dirs['chopped_dir'] + dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
+        f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()
         f2.close()
 
@@ -406,8 +433,13 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
         region = lines[regionNum].split(':')
         region[4] = region[4].split('\n')[0]
 
-        # read mask
-        mask = imread(dirs['outDir'] + dirs['fileID'] + dirs['img_save_dir'] + 'prediction/' + dirs['fileID'] + region[0] + '_mask.png')
+        # read mask - skip if file doesn't exist
+        mask_path = dirs['outDir'] + dirs['fileID'] + dirs['img_save_dir'] + 'prediction/' + dirs['fileID'] + region[0] + '_mask.png'
+        if not os.path.exists(mask_path):
+            print(f'\nWarning: Mask file not found, skipping region {region[0]}: {mask_path}')
+            continue
+            
+        mask = imread(mask_path)
 
         # get region bounds
         xStart = np.uint32(float(region[1]))
@@ -420,6 +452,14 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
         #print('yStart: ' + str(yStart))
         yStop = np.uint32(float(region[4]))
         #print('yStop: ' + str(yStop))
+
+        # Calculate expected region size and resize mask if necessary
+        expected_height = yStop - yStart
+        expected_width = xStop - xStart
+        if mask.shape != (expected_height, expected_width):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                mask = resize(mask, (expected_height, expected_width), order=0, preserve_range=True).astype(np.uint8)
 
         mask_part = wsiMask[yStart:yStop, xStart:xStop]
         ylen, xlen = np.shape(mask_part)
@@ -454,7 +494,7 @@ def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
 
         # add mask to xml
         pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=value,offset={'X':glob_offset[0],'Y':glob_offset[1]})
-        for i in range(np.shape(pointsList)[0]):
+        for i in range(len(pointsList)):
             pointList = pointsList[i]
             Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=value)
 

@@ -41,7 +41,7 @@ def evolve(args):
     dirs['final_output_dir'] = '/boundaries/'
     dirs['final_boundary_image_dir'] = '/images/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['crop_dir'] = '/wsi_crops/'
     dirs['save_outputs'] = args.save_outputs
     dirs['modeldir'] = '/MODELS/'
@@ -232,7 +232,7 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     slide=getWsi(wsi)
 
     fileID=basename.split('/')
-    dirs['fileID'] = fileID=fileID[len(fileID)-1]
+    dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
     print('\nchopping ...\n')
 
     # make txt file
@@ -311,7 +311,7 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
             warnings.simplefilter("ignore")
             imsave(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
 
-        f2.write(dirs['chopped_dir'] + dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
+        f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()
         f2.close()
 

@@ -32,7 +32,7 @@ def main(args):
     dirs['final_output_dir'] = '/boundaries/'
     dirs['final_boundary_image_dir'] = '/images/'
     dirs['mask_dir'] = '/wsi_mask/'
-    dirs['chopped_dir'] = '/originals/'
+    dirs['chopped_dir'] = '/'
     dirs['crop_dir'] = '/wsi_crops/'
     dirs['save_outputs'] = args.save_outputs
 
@@ -61,7 +61,7 @@ def main(args):
 
         test_data_list = fileID + '_images' + '.txt'
 
-        call(['python3', '/hdd/wsi_fun/Codes/Deeplab-v2--ResNet-101/main.py', '--option', 'predict',
+        call(['python3', os.path.dirname(os.path.abspath(__file__)) + '/Deeplab_network/main.py', '--option', 'predict',
             '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
             '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'], '--test_step', str(args.test_step),
             '--test_num_steps', str(test_num_steps), '--modeldir', args.modeldir,
@@ -90,7 +90,7 @@ def main(args):
 
         test_data_list = fileID + '_crops.txt'
 
-        call(['python3', '/hdd/wsi_fun/Codes/Deeplab-v2--ResNet-101/main.py', '--option', 'predict',
+        call(['python3', os.path.dirname(os.path.abspath(__file__)) + '/Deeplab_network/main.py', '--option', 'predict',
             '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
             '--out_dir', dirs['outDir']+fileID+dirs['final_output_dir'], '--test_step', str(args.test_step_2),
             '--test_num_steps', str(test_num_steps), '--modeldir', args.modeldir_2,
@@ -137,7 +137,7 @@ def chop_suey(dirs, downsample, region_size, step, args): # chop wsi
     slide=getWsi(wsi)
 
     fileID=basename.split('/')
-    dirs['fileID'] = fileID=fileID[len(fileID)-1]
+    dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
     print('\nchopping ...\n')
 
     # make txt file
@@ -212,7 +212,7 @@ def chop_wsi(yStart, xStart, f_name, f2_name, dirs, downsample, region_size, arg
             warnings.simplefilter("ignore")
             imsave(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
 
-        f2.write(dirs['chopped_dir'] + dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
+        f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()
         f2.close()
 

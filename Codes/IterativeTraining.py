@@ -400,7 +400,7 @@ def train_net(training_args,dirs):
     print('Running [' + str( training_args['num_steps'] ), '] iterations')
     print('Saving every [' + str( training_args['save_interval'] ) + '] iterations')
 
-    call(['python3.5', dirs['basedir'] +'/Codes/Deeplab_network/main.py', '--option', 'train',
+    call(['python3', dirs['basedir'] +'/Codes/Deeplab_network/main.py', '--option', 'train',
         '--data_list', training_args['data_list'],
         '--num_steps', str(training_args['num_steps']),
         '--save_interval',str(training_args['save_interval']),
