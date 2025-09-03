@@ -69,8 +69,10 @@ class Model(object):
 		"""Build the DeepLab model architecture for TF2."""
 		try:
 			from .network import Deeplab_v2_TF2, Deeplab_v2, ResNet_segmentation
+			from .network_tf2_fixed import Deeplab_v2_TF2_FIXED
 		except ImportError:
 			from network import Deeplab_v2_TF2, Deeplab_v2, ResNet_segmentation
+			from network_tf2_fixed import Deeplab_v2_TF2_FIXED
 		
 		# Create network
 		if self.conf.encoder_name not in ['res101', 'res50', 'deeplab']:
@@ -78,19 +80,9 @@ class Model(object):
 			print("Please input: res101, res50, or deeplab")
 			sys.exit(-1)
 		elif self.conf.encoder_name == 'deeplab':
-			# Use TF2 native Keras model when possible
-			try:
-				self.model = Deeplab_v2_TF2(num_classes=self.conf.num_classes, name='deeplab_v2')
-				print("Using TF2 native Keras DeepLab model")
-			except Exception as e:
-				print(f"TF2 model creation failed, using compatibility mode: {e}")
-				# Fallback to modified original architecture
-				inputs = tf.keras.Input(shape=input_shape, name='input_images')
-				
-				# Create a functional model using the original architecture
-				# but in TF2 compatibility mode
-				self.model = self._create_functional_deeplab_model(inputs)
-				
+			# Use FIXED TF2 native implementation
+			print("Using FIXED TF2 native DeepLab model")
+			self.model = Deeplab_v2_TF2_FIXED(num_classes=self.conf.num_classes, name='deeplab_v2')
 		else:
 			# ResNet segmentation
 			inputs = tf.keras.Input(shape=input_shape, name='input_images')
@@ -117,21 +109,20 @@ class Model(object):
 		return DeepLabWrapper(self.conf.num_classes, name='deeplab_wrapper')
 	
 	def _create_functional_resnet_model(self, inputs):
-		"""Create a functional Keras model using the original ResNet architecture."""
-		class ResNetWrapper(tf.keras.Model):
-			def __init__(self, num_classes, encoder_name, **kwargs):
-				super().__init__(**kwargs)
-				self.num_classes = num_classes
-				self.encoder_name = encoder_name
-				self._resnet_net = None
-			
-			def call(self, inputs, training=None):
-				# Create the original network on first call
-				if self._resnet_net is None:
-					self._resnet_net = ResNet_segmentation(inputs, self.num_classes, training, self.encoder_name)
-				return self._resnet_net.outputs
+		"""Create a functional Keras model using the FIXED TF2 ResNet architecture."""
 		
-		return ResNetWrapper(self.conf.num_classes, self.conf.encoder_name, name='resnet_wrapper')
+		# Use the fixed TF2 implementation directly
+		print("Using FIXED TF2 ResNet segmentation model")
+		try:
+			from .network_tf2_fixed import ResNet_segmentation_TF2
+		except ImportError:
+			from network_tf2_fixed import ResNet_segmentation_TF2
+		
+		return ResNet_segmentation_TF2(
+			num_classes=self.conf.num_classes, 
+			encoder_name=self.conf.encoder_name,
+			name='resnet_v1_50' if self.conf.encoder_name == 'res50' else 'resnet_v1_101'
+		)
 	
 	def setup_optimizers(self):
 		"""Setup TF2 optimizers."""
@@ -282,8 +273,10 @@ class Model(object):
 		print(f'Checkpoint saved at step {step}')
 	
 	def load_checkpoint(self, checkpoint_path):
-		"""Load model checkpoint with TF1/TF2 compatibility."""
+		"""Load model checkpoint with TF1/TF2 compatibility using dedicated TF1CheckpointLoader."""
 		import glob
+		import sys
+		import os
 		
 		# Extract the step number and directory
 		model_dir = os.path.dirname(checkpoint_path)
@@ -291,7 +284,10 @@ class Model(object):
 		
 		# First, check if TF2 checkpoint exists
 		if os.path.exists(checkpoint_path + '.index'):
-			# TF2 format checkpoint
+			# TF2 format checkpoint - ensure optimizers are initialized
+			if not hasattr(self, 'optimizer_encoder') or self.optimizer_encoder is None:
+				self.setup_optimizers()
+				
 			checkpoint = tf.train.Checkpoint(
 				model=self.model,
 				optimizer_encoder=self.optimizer_encoder,
@@ -302,91 +298,47 @@ class Model(object):
 			print(f"Restored TF2 model from {checkpoint_path}")
 			return
 		
-		# Check for TF1 format checkpoint
+		# Check for TF1 format checkpoint - USE TF1CheckpointLoader
 		tf1_checkpoint_pattern = os.path.join(model_dir, f'model.ckpt-{expected_step}')
 		tf1_files = glob.glob(tf1_checkpoint_pattern + '*')
 		
 		if tf1_files:
+			print(f"TF1 checkpoint detected - using TF1CheckpointLoader")
 			print(f"Found TF1 checkpoint files: {tf1_files}")
-			print(f"Loading TF1 checkpoint: {tf1_checkpoint_pattern}")
 			
-			# Use TF2's built-in TF1 checkpoint loading
-			try:
-				# For TF2, we can use tf.train.Checkpoint.restore() with TF1 checkpoints
-				# But we need to create a compatible mapping
-				
-				# Create checkpoint with just the model (simplified for TF1 compatibility)
-				checkpoint = tf.train.Checkpoint(model=self.model)
-				
-				# Try to restore with TF1 checkpoint
-				status = checkpoint.restore(tf1_checkpoint_pattern)
-				
-				# Check if restoration was successful
-				try:
-					status.expect_partial()  # TF1 checkpoints might not have all variables
-					print(f"Successfully loaded TF1 checkpoint from {tf1_checkpoint_pattern}")
-				except:
-					# If expect_partial fails, try to assert existing objects only
-					try:
-						status.assert_existing_objects_matched()
-						print(f"Partially loaded TF1 checkpoint from {tf1_checkpoint_pattern}")
-					except:
-						print(f"Warning: Could not fully verify checkpoint loading from {tf1_checkpoint_pattern}")
-						print("Proceeding anyway - model may not be fully initialized")
-						
-			except Exception as e:
-				print(f"Error loading TF1 checkpoint with tf.train.Checkpoint: {e}")
-				
-				# Fallback: try direct variable loading
-				try:
-					print("Attempting direct TF1 variable restoration...")
-					# For TF1 checkpoints, we might need to use tf.compat.v1 methods
-					self._restore_tf1_checkpoint_variables(tf1_checkpoint_pattern)
-				except Exception as e2:
-					print(f"Direct variable restoration also failed: {e2}")
-					raise FileNotFoundError(f"Could not load checkpoint from {tf1_checkpoint_pattern}")
+			# Use dedicated TF1CheckpointLoader
+			current_dir = os.path.dirname(os.path.abspath(__file__))
+			sys.path.insert(0, current_dir)
+			
+			from tf1_checkpoint_loader import TF1CheckpointLoader
+			
+			# Create TF1 checkpoint loader and load
+			tf1_loader = TF1CheckpointLoader(self.model)
+			loaded_count = tf1_loader.load_checkpoint(tf1_checkpoint_pattern)
+			
+			print(f"TF1 checkpoint loading completed: {loaded_count} variables loaded")
+			return loaded_count
 		else:
 			raise FileNotFoundError(f"No checkpoint found at {checkpoint_path} (TF2) or {tf1_checkpoint_pattern} (TF1)")
-	
-	def _restore_tf1_checkpoint_variables(self, checkpoint_path):
-		"""Restore TF1 checkpoint variables directly."""
-		# Read the checkpoint to see what variables are available
-		reader = tf.train.load_checkpoint(checkpoint_path)
-		var_map = reader.get_variable_to_shape_map()
+
+	def load_checkpoint_fixed(self, checkpoint_path):
+		"""DEPRECATED: Use load_checkpoint() instead - it now uses TF1CheckpointLoader automatically."""
+		print("WARNING: load_checkpoint_fixed() is deprecated. Use load_checkpoint() instead.")
+		return self.load_checkpoint(checkpoint_path)
+
+	def analyze_tf1_checkpoint(self, checkpoint_path):
+		"""Analyze TF1 checkpoint structure without loading."""
+		import sys
+		import os
 		
-		print(f"Checkpoint contains {len(var_map)} variables")
+		# Add the directory containing tf1_checkpoint_loader to Python path
+		current_dir = os.path.dirname(os.path.abspath(__file__))
+		sys.path.insert(0, current_dir)
 		
-		# Try to load variables that match our model
-		for var_name in var_map:
-			try:
-				# Get the variable value from checkpoint
-				var_value = reader.get_tensor(var_name)
-				
-				# Try to find matching variable in our model
-				# This is simplified - you might need to adjust variable name mapping
-				self._assign_variable_if_exists(var_name, var_value)
-				
-			except Exception as e:
-				# Skip variables that don't match
-				continue
+		from tf1_checkpoint_loader import TF1CheckpointLoader
 		
-		print("TF1 variable restoration completed")
-	
-	def _assign_variable_if_exists(self, var_name, var_value):
-		"""Try to assign a variable value to the model if a matching variable exists."""
-		# This is a simplified implementation
-		# You might need to implement proper variable name mapping for your specific model
-		try:
-			# Try to find the variable in the model
-			for layer in self.model.layers:
-				for weight in layer.weights:
-					if var_name in weight.name or weight.name in var_name:
-						if weight.shape == var_value.shape:
-							weight.assign(var_value)
-							print(f"Assigned {var_name} -> {weight.name}")
-							return
-		except:
-			pass
+		tf1_loader = TF1CheckpointLoader(self.model)
+		return tf1_loader.analyze_checkpoint(checkpoint_path)
 
 	# evaluate
 	def test(self):
