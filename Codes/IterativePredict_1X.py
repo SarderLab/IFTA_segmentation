@@ -51,14 +51,14 @@ def validate(args):
     # get all WSIs
     WSIs = []
     for ext in [args.wsi_ext]:
-        WSIs.append(glob(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + '/*' + ext))
+        WSIs.append(glob(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + '/*' + ext))
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
 
     else:
         for iter in range(1,iteration+1):
-            dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
+            dirs['xml_save_dir'] = args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
 
 
             # check main directory exists
@@ -69,7 +69,7 @@ def validate(args):
 
             print('working on iteration: ' + str(iter))
 
-            with open(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+            with open(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                 f.write('\niteration: \t'+str(iter)+'\n')
                 f.write('\twsi\t\t\tsensitivity\t\t\tspecificity\t\t\tprecision\t\t\taccuracy\t\t\tprediction time\n')
 
@@ -88,14 +88,14 @@ def validate(args):
                 predicted_xml = dirs['xml_save_dir'] + predicted_xml[-1]
                 sensitivity,specificity,precision,accuracy = get_perf(wsi=wsi, xml1=gt_xml, xml2 = predicted_xml, args=args)
 
-                with open(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+                with open(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                     f.write('\t'+wsi.split('/')[-1]+'\t\t'+str(sensitivity)+'\t\t'+str(specificity)+'\t\t'+str(precision)+'\t\t'+str(accuracy)+'\t\t'+str(predictTime)+'\n')
 
         print('\n\n\033[92;5mDone validating: \n\t\033[0m\n')
 
 def predict(args):
     # define folder structure dict
-    dirs = {'outDir': args.base_dir + '/' + args.project + args.outDir}
+    dirs = {'outDir': args.base_dir + '/data/' + args.project + args.outDir}
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
     dirs['mask_dir'] = '/wsi_mask/'
@@ -110,8 +110,7 @@ def predict(args):
     else:
         iteration = int(args.iteration)
 
-    print(iteration)
-    dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
+    dirs['xml_save_dir'] = args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
@@ -124,15 +123,10 @@ def predict(args):
         # get all WSIs
         WSIs = []
         for ext in [args.wsi_ext]:
-            WSIs.extend(glob(args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration) + '/*' + ext))
+            WSIs.extend(glob(args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/*' + ext))
 
         for wsi in WSIs:
-            #try:
             predict_xml(args=args, dirs=dirs, wsi=wsi, iteration=iteration)
-            #except KeyboardInterrupt:
-            #    break
-            #except:
-            #print('!!! Prediction on ' + wsi + ' failed\nmoving on...')
 
 
 def predict_xml(args, dirs, wsi, iteration):
@@ -143,7 +137,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
     # figure out the number of classes
     if args.classNum == 0:
-        annotatedXMLs=glob(args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
+        annotatedXMLs=glob(args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
         classes = []
         for xml in annotatedXMLs:
             classes.append(get_num_classes(xml))
@@ -178,10 +172,10 @@ def predict_xml(args, dirs, wsi, iteration):
     make_folder(dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction')
 
     test_data_list = fileID + '_images' + '.txt'
-    modeldir = args.base_dir + '/' + args.project + dirs['modeldir'] + str(iteration) + '/HR'
+    modeldir = args.base_dir + '/data/' + args.project + dirs['modeldir'] + str(iteration) + '/HR'
     test_step = get_test_step(modeldir)
 
-    print("\033[1;32;40m"+"starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\033[0;37;40m"+"\n\n")
+    print("starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\n")
     
     # Debug: Show the exact command being run
     batch_size = args.batch_size
@@ -198,13 +192,11 @@ def predict_xml(args, dirs, wsi, iteration):
         '--num_classes', str(classNum),
         '--gpu', str(args.gpu),
         '--encoder_name',args.encoder_name,
-        '--batch_size', str(batch_size),
-        '--print_color', "\033[1;32;40m"]
+        '--batch_size', str(batch_size)]
     
     print("DeepLab command:", ' '.join(deeplab_cmd))
     print(f"Processing {test_num_steps} images in {num_batches} batches of {batch_size}")
     return_code = call(deeplab_cmd)
-    print(f"DeepLab process completed with return code: {return_code}")
     
     # Check if prediction was successful
     if return_code != 0:
@@ -250,7 +242,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
 
 def get_iteration(args):
-    currentmodels=os.listdir(args.base_dir + '/' + args.project + '/MODELS/')
+    currentmodels=os.listdir(args.base_dir + '/data/' + args.project + '/MODELS/')
 
     if not currentmodels:
         return 'none'
@@ -348,16 +340,16 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     Parallel(n_jobs=num_cores, backend='threading')(delayed(chop_wsi)(yStart=i, xStart=j, idxx=idxx, idxy=idxy, f_name=f_name, f2_name=f2_name, dirs=dirs, downsample=downsample, region_size=region_size, args=args, wsi=wsi, choppable_regions=choppable_regions) for idxy, i in enumerate(index_y) for idxx, j in enumerate(index_x))
 
     test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
-    print('\n\n' + str(test_num_steps) +' image regions chopped')
+    print('\n\t' + str(test_num_steps) +' image regions chopped')
 
     return fileID, test_num_steps
 
 def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, region_size, args, wsi, choppable_regions): # perform cutting in parallel
     if choppable_regions[idxy, idxx] != 0:
         yEnd = yStart+region_size
-        #print(yEnd)
+        
         xEnd = xStart+region_size
-        #print(xEnd)
+        
         xLen=xEnd-xStart
         yLen=yEnd-yStart
 
@@ -371,7 +363,6 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
             subsect = np.zeros([region_size,region_size,3])
             subsect[0:subsect_.shape[0], 0:subsect_.shape[1], :] = subsect_
 
-		#print(whiteRatio)
         imageIter = str(xStart)+str(yStart)
 
         f = open(f_name, 'a+')
@@ -400,9 +391,7 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
         f.close()
         f2.close()
 
-        sys.stdout.write('   <'+str(xStart)+':'+str(xEnd)+' '+str(yStart)+':'+str(yEnd)+'>   ')
-        sys.stdout.flush()
-        restart_line()
+        # restart_line()
 
 def un_suey(dirs, args): # reconstruct wsi from predicted masks
     txtFile = dirs['fileID'] + '.txt'
@@ -416,19 +405,12 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
     # get wsi size
     xDim =int(float((lines[1].split(': ')[1]).split('\n')[0]))
     yDim = int(float((lines[2].split(': ')[1]).split('\n')[0]))
-    #print('xDim: ' + str(xDim))
-    #print('yDim: ' + str(yDim))
 
     # make wsi mask
     wsiMask = np.zeros([yDim, xDim]).astype(np.uint8)
 
     # read image regions
     for regionNum in range(7, np.size(lines)):
-        # print regionNum
-        sys.stdout.write('   <'+str(regionNum-7)+ ' of ' + str(np.size(lines)-8) +'>   ')
-        sys.stdout.flush()
-        restart_line()
-
         # get region
         region = lines[regionNum].split(':')
         region[4] = region[4].split('\n')[0]
@@ -443,15 +425,11 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
 
         # get region bounds
         xStart = np.uint32(float(region[1]))
-        #print('xStart: ' + str(xStart))
         xStop = np.uint32(float(region[2]))
-        #print('xStop: ' + str(xStop))
         yStart = np.uint32(float(region[3]))
         if yStart < 0:
             yStart = 0
-        #print('yStart: ' + str(yStart))
         yStop = np.uint32(float(region[4]))
-        #print('yStop: ' + str(yStop))
 
         # Calculate expected region size and resize mask if necessary
         expected_height = yStop - yStart
@@ -466,9 +444,7 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
         mask = mask[:ylen, :xlen]
 
         # populate wsiMask with max
-        #print(np.shape(wsiMask))
         wsiMask[yStart:yStop, xStart:xStop] = np.maximum(mask_part, mask).astype(np.uint8)
-        #wsiMask[yStart:yStop, xStart:xStop] = np.ones([yStop-yStart, xStop-xStart])
 
     return wsiMask
 
@@ -486,11 +462,11 @@ def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
     print(np.unique(wsiMask))
     for value in np.unique(unique_mask)[1:]:
         # print output
-        print('\t working on: annotationID ' + str(value))
+        print('\t Working on: annotationID ' + str(value))
         # get only 1 class binary mask
         binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
         binary_mask[wsiMask == value] = 1
-        print('binary_mask ==', np.unique(binary_mask))
+        print('Binary_mask ==', np.unique(binary_mask))
 
         # add mask to xml
         pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=value,offset={'X':glob_offset[0],'Y':glob_offset[1]})

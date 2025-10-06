@@ -32,4 +32,12 @@ USER=anish.tatke
 PROJECT=ifta-dds-jhu
 
 
-python segmentation_school.py --option predict --project BrandonsData --encoder_name deeplab --one_network True --batch_size 2 --classNum 4 --boxSizeHR 3000 --overlap_percentHR 0.5
+python segmentation_school.py \
+    --option predict \
+    --project DDS_JHU \
+    --encoder_name deeplab \
+    --one_network True \
+    --batch_size 2 \
+    --classNum 4 \
+    --boxSizeHR 3000 \
+    --overlap_percentHR 0.5

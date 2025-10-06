@@ -8,18 +8,22 @@ from PIL import Image
 
 # Handle both relative and absolute imports
 try:
-    from .network import *
-    from .utils import (
-        ImageReader, decode_labels, inv_preprocess, prepare_label, write_log, read_labeled_image_list,
-        create_tf2_dataset, write_tf_summary, write_image_summary, write_histogram_summary
-    )
+	# Relative imports when used as a package
+	from .models import DeepLabV2, ResNetSegmentation
+	from .utils.image_reader import ImageReader
+	from .utils import (
+		prepare_label, decode_labels, read_labeled_image_list, 
+		create_dataset, write_log
+	)
 except ImportError:
     # Fallback to absolute imports when called as a script
-    from network import *
-    from utils import (
-        ImageReader, decode_labels, inv_preprocess, prepare_label, write_log, read_labeled_image_list,
-        create_tf2_dataset, write_tf_summary, write_image_summary, write_histogram_summary
-    )
+	from models import DeepLabV2, ResNetSegmentation
+	from utils.image_reader import ImageReader, IMG_MEAN
+	from utils import (
+		prepare_label, decode_labels, read_labeled_image_list,
+		create_dataset, write_log
+	)
+
 
 
 
@@ -67,65 +71,23 @@ class Model(object):
 	
 	def build_model(self, input_shape):
 		"""Build the DeepLab model architecture for TF2."""
-		try:
-			from .network import Deeplab_v2_TF2, Deeplab_v2, ResNet_segmentation
-			from .network_tf2_fixed import Deeplab_v2_TF2_FIXED
-		except ImportError:
-			from network import Deeplab_v2_TF2, Deeplab_v2, ResNet_segmentation
-			from network_tf2_fixed import Deeplab_v2_TF2_FIXED
-		
 		# Create network
 		if self.conf.encoder_name not in ['res101', 'res50', 'deeplab']:
 			print('encoder_name ERROR!')
 			print("Please input: res101, res50, or deeplab")
 			sys.exit(-1)
 		elif self.conf.encoder_name == 'deeplab':
-			# Use FIXED TF2 native implementation
-			print("Using FIXED TF2 native DeepLab model")
-			self.model = Deeplab_v2_TF2_FIXED(num_classes=self.conf.num_classes, name='deeplab_v2')
+			self.model = DeepLabV2(num_classes=self.conf.num_classes)
 		else:
-			# ResNet segmentation
-			inputs = tf.keras.Input(shape=input_shape, name='input_images')
-			print("Creating ResNet segmentation model in compatibility mode")
-			self.model = self._create_functional_resnet_model(inputs)
+			self.model = ResNetSegmentation(
+				num_classes=self.conf.num_classes, 
+				encoder_name=self.conf.encoder_name,
+				name='resnet_v1_50' if self.conf.encoder_name == 'res50' else 'resnet_v1_101'
+			)
 		
 		return self.model
 	
-	def _create_functional_deeplab_model(self, inputs):
-		"""Create a functional Keras model using the original DeepLab architecture."""
-		# This creates a wrapper around the original Deeplab_v2 class
-		class DeepLabWrapper(tf.keras.Model):
-			def __init__(self, num_classes, **kwargs):
-				super().__init__(**kwargs)
-				self.num_classes = num_classes
-				self._deeplab_net = None
-			
-			def call(self, inputs, training=None):
-				# Create the original network on first call
-				if self._deeplab_net is None:
-					self._deeplab_net = Deeplab_v2(inputs, self.num_classes, training)
-				return self._deeplab_net.outputs
-		
-		return DeepLabWrapper(self.conf.num_classes, name='deeplab_wrapper')
-	
-	def _create_functional_resnet_model(self, inputs):
-		"""Create a functional Keras model using the FIXED TF2 ResNet architecture."""
-		
-		# Use the fixed TF2 implementation directly
-		print("Using FIXED TF2 ResNet segmentation model")
-		try:
-			from .network_tf2_fixed import ResNet_segmentation_TF2
-		except ImportError:
-			from network_tf2_fixed import ResNet_segmentation_TF2
-		
-		return ResNet_segmentation_TF2(
-			num_classes=self.conf.num_classes, 
-			encoder_name=self.conf.encoder_name,
-			name='resnet_v1_50' if self.conf.encoder_name == 'res50' else 'resnet_v1_101'
-		)
-	
 	def setup_optimizers(self):
-		"""Setup TF2 optimizers."""
 		# Create optimizers for different learning rates
 		base_lr = self.conf.learning_rate
 		
@@ -143,9 +105,7 @@ class Model(object):
 		)
 
 	# train
-	def train(self):
-		normal_color = "\033[0;37;40m"
-		
+	def train(self):		
 		# Setup model and data pipeline
 		self.train_setup_tf2()
 		
@@ -170,7 +130,7 @@ class Model(object):
 				self.save_checkpoint(step)
 			
 			duration = time.time() - start_time
-			print(self.conf.print_color + 'step {:d} \t loss = {:.3f}, ({:.3f} sec/step)'.format(step, loss_value, duration) + normal_color)
+			print('step {:d} \t loss = {:.3f}, ({:.3f} sec/step)'.format(step, loss_value, duration))
 			write_log('{:d}, {:.3f}'.format(step, loss_value), self.conf.logfile)
 	
 	@tf.function
@@ -273,77 +233,38 @@ class Model(object):
 		print(f'Checkpoint saved at step {step}')
 	
 	def load_checkpoint(self, checkpoint_path):
-		"""Load model checkpoint with TF1/TF2 compatibility using dedicated TF1CheckpointLoader."""
-		import glob
-		import sys
+		"""Load model checkpoint for TF2."""
 		import os
 		
-		# Extract the step number and directory
-		model_dir = os.path.dirname(checkpoint_path)
-		expected_step = os.path.basename(checkpoint_path).split('_')[-1]
+		# Ensure model is built
+		if self.model is None:
+			# Build model with default input shape - will be resized during inference
+			self.build_model(input_shape=(None, None, 3))
 		
-		# First, check if TF2 checkpoint exists
+		# Ensure optimizers are initialized
+		if not hasattr(self, 'optimizer_encoder') or self.optimizer_encoder is None:
+			self.setup_optimizers()
+		
+		# Check if TF2 checkpoint exists
 		if os.path.exists(checkpoint_path + '.index'):
-			# TF2 format checkpoint - ensure optimizers are initialized
-			if not hasattr(self, 'optimizer_encoder') or self.optimizer_encoder is None:
-				self.setup_optimizers()
-				
+			
 			checkpoint = tf.train.Checkpoint(
 				model=self.model,
 				optimizer_encoder=self.optimizer_encoder,
 				optimizer_decoder_w=self.optimizer_decoder_w,
 				optimizer_decoder_b=self.optimizer_decoder_b
 			)
-			checkpoint.restore(checkpoint_path)
+			
+			# Use expect_partial() to suppress warnings for missing/extra variables
+			print(f"Loading checkpoint from {checkpoint_path}")
+			status = checkpoint.restore(checkpoint_path)
 			print(f"Restored TF2 model from {checkpoint_path}")
 			return
-		
-		# Check for TF1 format checkpoint - USE TF1CheckpointLoader
-		tf1_checkpoint_pattern = os.path.join(model_dir, f'model.ckpt-{expected_step}')
-		tf1_files = glob.glob(tf1_checkpoint_pattern + '*')
-		
-		if tf1_files:
-			print(f"TF1 checkpoint detected - using TF1CheckpointLoader")
-			print(f"Found TF1 checkpoint files: {tf1_files}")
-			
-			# Use dedicated TF1CheckpointLoader
-			current_dir = os.path.dirname(os.path.abspath(__file__))
-			sys.path.insert(0, current_dir)
-			
-			from tf1_checkpoint_loader import TF1CheckpointLoader
-			
-			# Create TF1 checkpoint loader and load
-			tf1_loader = TF1CheckpointLoader(self.model)
-			loaded_count = tf1_loader.load_checkpoint(tf1_checkpoint_pattern)
-			
-			print(f"TF1 checkpoint loading completed: {loaded_count} variables loaded")
-			return loaded_count
 		else:
-			raise FileNotFoundError(f"No checkpoint found at {checkpoint_path} (TF2) or {tf1_checkpoint_pattern} (TF1)")
-
-	def load_checkpoint_fixed(self, checkpoint_path):
-		"""DEPRECATED: Use load_checkpoint() instead - it now uses TF1CheckpointLoader automatically."""
-		print("WARNING: load_checkpoint_fixed() is deprecated. Use load_checkpoint() instead.")
-		return self.load_checkpoint(checkpoint_path)
-
-	def analyze_tf1_checkpoint(self, checkpoint_path):
-		"""Analyze TF1 checkpoint structure without loading."""
-		import sys
-		import os
-		
-		# Add the directory containing tf1_checkpoint_loader to Python path
-		current_dir = os.path.dirname(os.path.abspath(__file__))
-		sys.path.insert(0, current_dir)
-		
-		from tf1_checkpoint_loader import TF1CheckpointLoader
-		
-		tf1_loader = TF1CheckpointLoader(self.model)
-		return tf1_loader.analyze_checkpoint(checkpoint_path)
+			raise FileNotFoundError(f"No checkpoint found at {checkpoint_path}")
 
 	# evaluate
 	def test(self):
-		normal_color = "\033[0;37;40m"
-		
 		# Setup model and data pipeline for testing
 		self.test_setup_tf2()
 		
@@ -392,22 +313,20 @@ class Model(object):
 			confusion_matrix += c_matrix.numpy()
 			
 			if step % 100 == 0:
-				print(self.conf.print_color + 'step {:d}'.format(step) + normal_color)
+				print('step {:d}'.format(step))
 		
 		# Print results
-		print(self.conf.print_color + 'Pixel Accuracy: {:.3f}'.format(self.accuracy_metric.result().numpy()) + normal_color)
-		print(self.conf.print_color + 'Mean IoU: {:.3f}'.format(self.miou_metric.result().numpy()) + normal_color)
+		print('Pixel Accuracy: {:.3f}'.format(self.accuracy_metric.result().numpy()))
+		print('Mean IoU: {:.3f}'.format(self.miou_metric.result().numpy()))
 		self.compute_IoU_per_class(confusion_matrix)
 
 	# prediction
-	def predict(self):
-		normal_color = "\033[0;37;40m"
-		
+	def predict(self):		
 		# Setup model and data pipeline for prediction
-		self.predict_setup_tf2()
+		self.prediction_setup()
 		
 		# Load checkpoint
-		checkpoint_path = os.path.join(self.conf.modeldir, f'model_step_{self.conf.test_step}')
+		checkpoint_path = os.path.join(self.conf.modeldir, 'deeplabv2')
 		self.load_checkpoint(checkpoint_path)
 		
 		# Get image name list
@@ -460,15 +379,13 @@ class Model(object):
 					filename = f'/{img_name}_mask_visual.png'
 					im.save(self.conf.out_dir + '/visual_prediction' + filename)
 			if step % 100 == 0:
-				print(self.conf.print_color + 'step {:d}'.format(step) + normal_color)
+				print('step {:d}'.format(step))
 
-		print(self.conf.print_color + 'The output files have been saved to {}'.format(self.conf.out_dir) + normal_color)
-	
-	def create_tf2_dataset(self, data_dir, data_list, input_size=None, is_training=False):
-		"""Create a TF2 dataset pipeline using the new utility function."""
-		
+		print('The output files have been saved to {}'.format(self.conf.out_dir))
+
+	def create_dataset(self, data_dir, data_list, input_size=None, is_training=False):
 		# Use the new utility function for creating TF2 datasets
-		dataset = create_tf2_dataset(
+		dataset = create_dataset(
 			data_dir=data_dir,
 			data_list=data_list,
 			input_size=input_size,
@@ -476,7 +393,7 @@ class Model(object):
 			random_scale=self.conf.random_scale if is_training else False,
 			random_mirror=self.conf.random_mirror if is_training else False,
 			ignore_label=self.conf.ignore_label,
-			img_mean=tf.constant([104.00698793, 116.66876762, 122.67891434]),
+			img_mean=tf.constant(IMG_MEAN, dtype=tf.float32),
 			shuffle=is_training,
 			repeat=is_training
 		)
@@ -495,7 +412,7 @@ class Model(object):
 		input_size = (self.conf.input_height, self.conf.input_width)
 		
 		# Create training dataset
-		self.train_dataset = self.create_tf2_dataset(
+		self.train_dataset = self.create_dataset(
 			self.conf.data_dir,
 			self.conf.data_list,
 			input_size=input_size,
@@ -512,7 +429,7 @@ class Model(object):
 	def test_setup_tf2(self):
 		"""Setup testing pipeline for TF2."""
 		# Create validation dataset
-		self.test_dataset = self.create_tf2_dataset(
+		self.test_dataset = self.create_dataset(
 			self.conf.data_dir,
 			self.conf.valid_data_list,
 			input_size=None,  # Variable size for testing
@@ -527,10 +444,10 @@ class Model(object):
 		# Setup optimizers (needed for checkpoint loading)
 		self.setup_optimizers()
 	
-	def predict_setup_tf2(self):
+	def prediction_setup(self):
 		"""Setup prediction pipeline for TF2."""
 		# Create prediction dataset
-		self.predict_dataset = self.create_tf2_dataset(
+		self.predict_dataset = self.create_dataset(
 			self.conf.data_dir,
 			self.conf.test_data_list,
 			input_size=None,  # Variable size for prediction
@@ -544,27 +461,6 @@ class Model(object):
 		
 		# Setup optimizers (needed for checkpoint loading)
 		self.setup_optimizers()
-
-	# OLD TF1.x METHODS - COMMENTED OUT FOR REFERENCE
-	# These methods need to be completely replaced or removed
-	
-	"""
-	OLD TF1.x CODE - REMOVED FOR TF2 MIGRATION
-	All the old train_setup, test_setup, predict_setup methods
-	that used tf.Session, tf.train.Coordinator, etc. have been
-	replaced with TF2 equivalents above.
-	"""
-
-	# Keep the old save/load methods as legacy stubs (they're replaced by checkpoint methods)
-	def save(self, saver, step):
-		"""Legacy method - use save_checkpoint instead."""
-		print("Warning: Using legacy save method. Use save_checkpoint instead.")
-		self.save_checkpoint(step)
-
-	def load(self, saver, filename):
-		"""Legacy method - use load_checkpoint instead."""
-		print("Warning: Using legacy load method. Use load_checkpoint instead.")
-		self.load_checkpoint(filename)
 
 	def compute_IoU_per_class(self, confusion_matrix):
 		"""Compute IoU per class from confusion matrix."""

@@ -5,12 +5,11 @@ Codes/__pycache__/
 
 log/
 logs/
-BrandonsData/
-KPMP/
-DiagnosticCore/
-DDS_JHU/
-
+analysis/
+data/
 
 *.sif
 TF1-2.pdf
 run.sh
+
+MODELS/

@@ -72,13 +72,13 @@ def main(args):
 
 def savetime(args, starttime):
     if args.option in ['new', 'New']:
-        with open(args.base_dir + '/' + args.project + '/runtime.txt', 'w') as timefile:
+        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'w') as timefile:
             timefile.write('option' +'\t'+ 'time' +'\t'+ 'epochs_LR' +'\t'+ 'epochs_HR' +'\t'+ 'aug_LR' +'\t'+ 'aug_HR' +'\t'+ 'overlap_percentLR' +'\t'+ 'overlap_percentHR')
     if args.option in ['train', 'Train']:
-        with open(args.base_dir + '/' + args.project + '/runtime.txt', 'a') as timefile:
+        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
             timefile.write('\n' + args.option +'\t'+ str(time.time()-starttime) +'\t'+ str(args.epoch_LR) +'\t'+ str(args.epoch_HR) +'\t'+ str(args.aug_LR) +'\t'+ str(args.aug_HR) +'\t'+ str(args.overlap_percentLR) +'\t'+ str(args.overlap_percentHR))
     if args.option in ['predict', 'Predict']:
-        with open(args.base_dir + '/' + args.project + '/runtime.txt', 'a') as timefile:
+        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
             timefile.write('\n' + args.option +'\t'+ str(time.time()-starttime))
 
 

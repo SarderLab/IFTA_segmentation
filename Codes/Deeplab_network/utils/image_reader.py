@@ -136,13 +136,15 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     return img, label
 
+IMG_MEAN = tf.constant([104.00698793, 116.66876762, 122.67891434], dtype=tf.float32)
+
 class ImageReader(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk using TF2.x tf.data.Dataset patterns.
     '''
 
     def __init__(self, data_dir, data_list, input_size, 
-                 random_scale, random_mirror, ignore_label, img_mean, coord=None):
+                 random_scale, random_mirror, ignore_label, img_mean=IMG_MEAN, coord=None):
         '''Initialise an ImageReader.
         
         Args:
@@ -232,7 +234,7 @@ class ImageReader(object):
         return self.dataset
 
 
-def create_tf2_dataset(data_dir, data_list, input_size=None, batch_size=1, 
+def create_dataset(data_dir, data_list, input_size=None, batch_size=1, 
                       random_scale=False, random_mirror=False, ignore_label=255, 
                       img_mean=None, shuffle=True, repeat=True):
     """
@@ -254,7 +256,7 @@ def create_tf2_dataset(data_dir, data_list, input_size=None, batch_size=1,
         A batched tf.data.Dataset.
     """
     if img_mean is None:
-        img_mean = tf.constant([104.00698793, 116.66876762, 122.67891434])
+        img_mean = tf.constant(IMG_MEAN, dtype=tf.float32)
     
     # Read the file list
     image_list, label_list = read_labeled_image_list(data_dir, data_list)

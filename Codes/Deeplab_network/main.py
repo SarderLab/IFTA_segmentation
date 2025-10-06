@@ -79,7 +79,7 @@ if __name__ == '__main__':
 		help='actions: train, test, or predict')
 	parser.add_argument('--out_dir', dest='out_dir', type=str, default='output',
 		help='directory for saving testing outputs')
-	parser.add_argument('--test_step', dest='test_step', type=int, default=350000,
+	parser.add_argument('--test_step', dest='test_step', type=int, default=00000,
 		help='checkpoint number for testing/validation')
 	parser.add_argument('--test_num_steps', dest='test_num_steps', type=int, default=81605,
 		help='number of testing/validation samples')
