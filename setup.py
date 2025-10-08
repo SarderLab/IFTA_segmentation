@@ -2,23 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
+from setuptools import setup, find_packages
 
-from setuptools import find_packages
-
-# try:
-#     from skbuild import setup
-# except ImportError:
-#     sys.stderr.write("""scikit-build is required to build from source or run tox.
-# Please run:
-#   python -m pip install scikit-build
-# """)
-#     # from setuptools import setup
-#     sys.exit(1)
-from setuptools import setup
-
-
-with open('README.rst', 'rt') as readme_file:
+with open('README.rst', 'rt', encoding='utf-8') as readme_file:
     readme = readme_file.read()
 
 
@@ -40,7 +26,7 @@ def prerelease_local_scheme(version):
 
 
 setup(
-    name='ifta',
+    name='ifta-segmentation',
     use_scm_version={'local_scheme': prerelease_local_scheme},
     description='A Python toolkit for Histopathology Image Analysis',
     long_description=readme,
@@ -49,61 +35,47 @@ setup(
     author_email='developers@digitalslidearchive.net',
     url='https://github.com/DigitalSlideArchive/HistomicsTK',
     packages=find_packages(exclude=['tests', '*_test']),
-    package_dir={
-        'ifta': 'ifta',
-    },
+    package_dir={'ifta': 'ifta'},
     include_package_data=True,
     install_requires=[
-        # scientific packages
-        'nimfa>=1.3.2',
-        'numpy==1.18.1',
-        'scipy>=0.19.0',
-        'Pillow==9.5.0',
-        'pandas>=0.19.2',
-        'imageio>=2.3.0',
-        'shapely[vectorized]',
-        #'opencv-python-headless<4.7',
-        #'sqlalchemy',
-        'matplotlib',
-        'pyvips',
-        'termcolor',
-        'seaborn',
-        'opencv-python',
-        #'openslide-tools'
-        #'libopenslide0',
-        'openslide-python',
-        'scikit-image==0.15.0',
-        'scikit-learn==1.0.2',
-        'lxml==4.2.2',
-        'joblib==1.1.0',
-        'tifffile==2021.11.2',
-        'tiffslide==1.3.0',
-        'tqdm==4.64.0',
-        'umap-learn==0.5.3',
-        'openpyxl',
+        'numpy>=1.22,<2.0',
+        'scipy>=1.8,<2.0',
+        'pandas>=1.5,<3.0',
+        'matplotlib>=3.6,<4.0',
+        'imageio>=2.21,<3.0',
+        'Pillow>=9.5,<11.0',
+        'shapely[vectorized]>=2.0,<3.0',
+        'scikit-image>=0.20,<0.25',
+        'scikit-learn>=1.2,<1.6',
+        'joblib>=1.1,<2.0',
+        'lxml>=4.9,<5.0',
+        'tifffile>=2022.10,<2025.0',
+        'tiffslide>=1.3,<2.0',
+        'tqdm>=4.64,<5.0',
+        'umap-learn>=0.5.4,<0.6',
+        'openpyxl>=3.0,<4.0',
         'xlrd<2',
-        # dask packages
-        'dask[dataframe]>=1.1.0',
-        'distributed>=1.21.6',
-        # large image sources
-        #'large-image[sources]',
-        'girder-slicer-cli-web',
-        'girder-client',
-        # cli
+        'h5py>=3.8,<4.0',
+        'opencv-python-headless>=4.7,<5.0',
+        'openslide-python>=1.2,<2.0',
+        'pyvips>=2.2,<3.0',
+        'girder-slicer-cli-web>=1.4,<2.0',
+        'girder-client>=3.1,<4.0',
         'ctk-cli',
-        'protobuf==3.20.1',
+        'dask[dataframe]>=2023.1.0,<2025.0',
+        'distributed>=2023.1.0,<2025.0',
+        'termcolor>=2.0,<3.0',
+        'seaborn>=0.12,<0.14',
+        'protobuf>=3.20.3,<5',
     ],
+    python_requires='>=3.10',
     license='Apache Software License 2.0',
     keywords='ifta',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],

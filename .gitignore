@@ -1,0 +1,3 @@
+*.pyc
+Codes/__pycache__/
+Codes/Deeplab_network/__pycache__/

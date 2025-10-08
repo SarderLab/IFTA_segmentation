@@ -3,10 +3,10 @@
   <category>HistomicsTK</category>
   <title>IFTA Segmentation</title>
   <description>For segmenting peritubular capillaries in PAS-stained WSIs</description>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <documentation-url>https://digitalslidearchive.github.io/HistomicsTK/</documentation-url>
   <license>Apache 2.0</license>
-  <contributor>Praveen Kumar Dande (UFL)</contributor>
+  <contributor>Anish Tatke (UFL)</contributor>
   <acknowledgements>This work is part of efforts in digital pathology by the Sarder Lab: UFL.</acknowledgements>
   <parameters>
     <label>IO</label>

@@ -4,185 +4,84 @@
 #
 # All plugins of HistomicsTK should derive from this docker image
 
-
-# start from nvidia/cuda 10.0
-# FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
-#FROM nvidia/cuda:10.2-base-ubuntu18.04
-# FROM nvidia/cuda:11.1.1-base-ubuntu18.04
-# LABEL com.nvidia.volumes.needed="nvidia_driver"
-FROM tensorflow/tensorflow:1.15.4-gpu-py3
+# start from TensorFlow 2.15 (Python 3.10) GPU base
+FROM tensorflow/tensorflow:2.15.0-gpu
 LABEL com.nvidia.volumes.needed="nvidia_driver"
+LABEL maintainer="Anish Tatke <anish.tatke@ufl.edu>"
 
-LABEL maintainer="Sayat Mimar - Sarder Lab. <sayat.mimar@ufl.edu>"
 
-CMD echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING THE BUILD !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# RUN mkdir /usr/local/nvidia && ln -s /usr/local/cuda-10.0/compat /usr/local/nvidia/lib
+RUN echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING THE BUILD !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    TF_CPP_MIN_LOG_LEVEL=2
 
-# Remove bad repos
-RUN rm \
-    /etc/apt/sources.list.d/cuda.list
+# Remove any stale CUDA repo lists if present in this base (harmless if absent)
+RUN rm -f /etc/apt/sources.list.d/cuda*.list || true
 
-RUN apt-get update && \
-    apt-get install --yes --no-install-recommends software-properties-common && \
-    # As of 2018-04-16 this repo has the latest release of Python 2.7 (2.7.14) \
-    # add-apt-repository ppa:jonathonf/python-2.7 && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get autoremove && \
+RUN apt-get update; \
+    apt-get install -y --no-install-recommends software-properties-common; \
+    add-apt-repository -y ppa:deadsnakes/ppa; \
+    apt-get autoremove; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get --yes --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade && \
+
+# System dependencies (lxml / openslide / pyvips / opencv-headless and basic build tools)
+RUN apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get --yes --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    #keyboard-configuration \
-    git \
-    wget \
-    python-qt4 \
-    python3-pyqt4 \
-    curl \
-    ca-certificates \
-    libcurl4-openssl-dev \
-    libexpat1-dev \
-    unzip \
-    libhdf5-dev \
-    libpython-dev \
-    libpython3-dev \
-    python2.7-dev \
-    python-tk \
-    # We can't go higher than 3.7 and use tensorflow 1.x \
-    python3.7-dev \
-    python3.7-distutils \
-    python3-tk \
-    software-properties-common \
-    libssl-dev \
-    # Standard build tools \
-    build-essential \
-    cmake \
-    autoconf \
-    automake \
-    libtool \
-    pkg-config \
-    # needed for supporting CUDA \
-    # libcupti-dev \
-    # useful later \
-    libmemcached-dev && \
-    #apt-get autoremove && \
+        git curl ca-certificates wget unzip \
+        build-essential pkg-config \
+        libxml2-dev libxslt1-dev \
+        openslide-tools libopenslide0 \
+        libvips \
+        ffmpeg libsm6 libxext6 libgl1 libglib2.0-0 \
+        memcached; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-CMD echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHECKPOINT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+RUN echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHECKPOINT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
-RUN apt-get update ##[edited]
-RUN apt-get install 'ffmpeg'\
-    'libsm6'\
-    'libxext6'  -y
+# IFTA-specific paths
+ENV build_path=/build \
+    ifta_path=/ifta
+RUN mkdir -p "${ifta_path}"
+WORKDIR "${ifta_path}"
 
-RUN apt-get install libxml2-dev libxslt1-dev -y
-# RUN apt-get install software-properties-common -y
-# RUN add-apt-repository ppa:graphics-drivers/ppa -y
-# RUN apt-get update -y
-# RUN apt-get upgrade -y
-# RUN apt-get install nvidia-driver-455 -y
+# Copy source
+COPY . "${ifta_path}/"
 
-WORKDIR /
-# Make Python3 the default and install pip.  Whichever is done last determines
-# the default python version for pip.
+ENV PYTHON_BIN=/usr/bin/python3 \
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-#Make a specific version of python the default and install pip
-RUN rm -f /usr/bin/python && \
-    rm -f /usr/bin/python3 && \
-    ln `which python3.7` /usr/bin/python && \
-    ln `which python3.7` /usr/bin/python3 && \
-    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python get-pip.py && \
-    rm get-pip.py && \
-    ln `which pip3` /usr/bin/pip
+# Install pip
+RUN set -eux; \
+    (${PYTHON_BIN} -m ensurepip --upgrade || true); \
+    if ! ${PYTHON_BIN} -m pip --version >/dev/null 2>&1; then \
+        curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \
+        ${PYTHON_BIN} /tmp/get-pip.py; \
+        rm -f /tmp/get-pip.py; \
+    fi;
 
-
-RUN which  python && \
-    python --version
-# RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
-# RUN curl -O https://bootstrap.pypa.io/pip/3.7/get-pip.py && \
-#     python get-pip.py && \
-#     rm get-pip.py
-
-ENV build_path=$PWD/build
-ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-# IFTASegmentation sepcific
-
-# copy IFTASegmentation files
-ENV ifta_path=$PWD/ifta
-RUN mkdir -p $ifta_path
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends memcached && \
-    #apt-get autoremove && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-# RUN pip install torch
-# RUN python -c 'import torch,sys;print(torch.cuda.is_available());sys.exit(not torch.cuda.is_available())'
-COPY . $ifta_path/
-WORKDIR $ifta_path
-
-#   Upgrade setuptools, as the version in Conda won't upgrade cleanly unless it
-# is ignored.
-
-
-RUN pip install --no-cache-dir --upgrade --ignore-installed pip setuptools && \
-    pip install --no-cache-dir .  && \
-    pip install --no-cache-dir 'tensorflow==1.15' && \
-    # Install large_image memcached extras \
-    #pip install --no-cache-dir 'large-image[memcached]' && \
-    # Install HistomicsTK \
-    #pip install --no-cache-dir . --find-links https://girder.github.io/large_image_wheels && \
-    # Install tf-slim \
-    #pip install --no-cache-dir 'tf-slim>=1.1.0' && \
-    # Install pillow_lut \
-    #pip install --no-cache-dir 'pillow-lut' && \
-
-    pip install --no-cache-dir tensorboard cmake onnx && \
-
-    #pip install --no-cache-dir torch==1.10  torchaudio==0.10 torchvision==0.11.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html && \
-
-    #pip install --no-cache-dir 'git+https://github.com/facebookresearch/fvcore' && \
-
-    #git clone https://github.com/facebookresearch/detectron2 detectron2_repo && \
-    #git clone https://github.com/facebookresearch/detectron2.git && \
-    python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.10/index.html && \
-    #python -m pip install -e detectron2 && \
-    # clean up \
+# Install IFTA package (setup.py drives dependencies)
+# Install with runtime extras so packages like numpy, matplotlib, imageio, etc. are available
+RUN ${PYTHON_BIN} -c "import sys; print(sys.executable); print(sys.version_info)" && \
+    ${PYTHON_BIN} -m pip install --no-cache-dir --upgrade pip setuptools wheel setuptools-scm && \
+    ${PYTHON_BIN} -m pip install --no-cache-dir /ifta && \
+    # optional: verify imports
+    ${PYTHON_BIN} -c "from matplotlib import pyplot as plt" && \
+    ${PYTHON_BIN} -m pip list --format=freeze > /image-requirements.txt && \
     rm -rf /root/.cache/pip/*
 
-# ENV FORCE_CUDA="1"
-# ARG TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
-# ENV TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST}"
-# RUN pip install --no-cache-dir -e detectron2_repo
-# Show what was installed
-RUN python --version && pip --version && pip freeze
+# Verify installation
+RUN ${PYTHON_BIN} --version && ${PYTHON_BIN} -m pip --version && ${PYTHON_BIN} -m pip freeze | tail -n +1 | head -n 50
 
-#RUN pip install --user torch==1.10 torchvision==0.11.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html
+# Define entrypoint through which all CLIs can be run
+WORKDIR "${ifta_path}/ifta/cli"
 
-#RUN pip install --user 'git+https://github.com/facebookresearch/fvcore'
-# install detectron2
-#RUN git clone https://github.com/facebookresearch/detectron2 detectron2_repo
-# set FORCE_CUDA because during `docker build` cuda is not accessible
-#ENV FORCE_CUDA="1"
-# remove cuda compat
-# RUN apt remove --purge cuda-compat-10-0 --yes
-
-# pregenerate font cache
-RUN python -c "from matplotlib import pylab"
-
-# Suppress warnings
-# RUN sed -i 's/^_PRINT_DEPRECATION_WARNINGS = True/_PRINT_DEPRECATION_WARNINGS = False/g' /usr/local/lib/python3.8/dist-packages/tensorflow_core/python/util/deprecation.py && \
-#     sed -i 's/rename = get_rename_v2(full_name)/rename = False/g' /usr/local/lib/python3.8/dist-packages/tensorflow_core/python/util/module_wrapper.py
-
-# define entrypoint through which all CLIs can be run
-WORKDIR $ifta_path/ifta/cli
-
-# Test our entrypoint.  If we have incompatible versions of numpy and
-# openslide, one of these will fail
-RUN python -m slicer_cli_web.cli_list_entrypoint --list_cli
-RUN python -m slicer_cli_web.cli_list_entrypoint IFTASegmentation --help
-
+# Test CLI discovery (optional; keep if you want to fail fast during build)
+RUN ${PYTHON_BIN} -m slicer_cli_web.cli_list_entrypoint --list_cli && \
+    ${PYTHON_BIN} -m slicer_cli_web.cli_list_entrypoint IFTASegmentation --help
 
 ENTRYPOINT ["/bin/bash", "docker-entrypoint.sh"]

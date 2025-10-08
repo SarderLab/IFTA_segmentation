@@ -1,8 +1,5 @@
 
 import numpy as np
-import sys
-sys.path.append('..')
-from ifta_code.Codes.getWsi import getWsi
 from skimage.filters import threshold_otsu
 from skimage.morphology import binary_closing, disk, remove_small_objects,label
 from scipy.ndimage.morphology import binary_fill_holes
@@ -10,6 +7,13 @@ import matplotlib.pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.filters import gaussian
 from skimage.morphology import binary_dilation, diamond
+
+# Try absolute import first, then relative import
+try:
+    from getWsi import getWsi
+except ImportError:
+    from .getWsi import getWsi
+
 def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
     if wsi.split('.')[-1] != 'tif':
         slide=getWsi(wsi)
@@ -29,7 +33,7 @@ def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
 
 
         binary=(g>0.05).astype('bool')
-        binary2=binary_dilation(binary,selem=diamond(20))
+        binary2=binary_dilation(binary, footprint=diamond(20))
         binary2=binary_fill_holes(binary2)
 
         '''

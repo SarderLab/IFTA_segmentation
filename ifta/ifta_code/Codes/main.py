@@ -1,74 +1,68 @@
 import argparse
 import os
 import tensorflow as tf
-from model import Model
+from Deeplab_network.model import Model
+
+def configure(args):
+    """Convert argparse args to a configuration object for backward compatibility."""
+    class Config:
+        def __init__(self, args):
+            # Copy all args attributes to config
+            for key, value in vars(args).items():
+                setattr(self, key, value)
+    
+    return Config(args)
+
+def setup_gpu(gpu_id):
+    """Setup GPU with memory growth for TF2."""
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+    
+    # Configure GPU memory growth to prevent allocation of all GPU memory
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Enable memory growth for all GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"GPU {gpu_id} configured with memory growth enabled")
+        except RuntimeError as e:
+            print(f"GPU configuration error: {e}")
+    else:
+        print("No GPUs found, using CPU")
 
 
+def validate_config(args):
+    """Validate configuration parameters.""" 
+    if args.option not in ['train', 'test', 'predict']:
+        raise ValueError(f"Invalid option: {args.option}. Must be 'train', 'test', or 'predict'")
+    
+    if not os.path.exists(args.data_dir):
+        print(f"Warning: Data directory does not exist: {args.data_dir}")
+    
+    if args.option in ['test', 'predict'] and not os.path.exists(args.test_data_list):
+        print(f"Warning: Test data list does not exist: {args.test_data_list}")
 
-"""
-This script defines hyperparameters.
-"""
 
-
-
-def configure(test_data_list_, out_dir_, test_step_, test_num_steps_, modeldir_, data_dir_, num_steps_, save_interval_, learning_rate_, pretrain_file_, data_list_, batch_size_, input_height_, input_width_, num_classes_):
-	flags = tf.app.flags
-
-	# training
-	flags.DEFINE_integer('num_steps', num_steps_, 'maximum number of iterations')
-	flags.DEFINE_integer('save_interval', save_interval_, 'number of iterations for saving and visualization')
-	flags.DEFINE_integer('random_seed', 1234, 'random seed')
-	flags.DEFINE_float('weight_decay', 0.0005, 'weight decay rate')
-	flags.DEFINE_float('learning_rate', learning_rate_, 'learning rate')
-	flags.DEFINE_float('power', 0.9, 'hyperparameter for poly learning rate')
-	flags.DEFINE_float('momentum', 0.9, 'momentum')
-	flags.DEFINE_string('encoder_name', 'deeplab', 'name of pre-trained model, res101, res50 or deeplab')
-	flags.DEFINE_string('pretrain_file', pretrain_file_, 'pre-trained model filename corresponding to encoder_name')
-	flags.DEFINE_string('data_list', data_list_, 'training data list filename')
-
-	# validation
-	flags.DEFINE_integer('valid_step', 217000, 'checkpoint number for validation')
-	flags.DEFINE_integer('valid_num_steps', 81605, '= number of validation samples')
-	flags.DEFINE_string('valid_data_list', './dataAugment/val.txt', 'validation data list filename')
-
-	# prediction / saving outputs for testing or validation
-	flags.DEFINE_string('out_dir', out_dir_, 'directory for saving outputs')
-	flags.DEFINE_integer('test_step', test_step_, 'checkpoint number for testing/validation')
-	flags.DEFINE_integer('test_num_steps', test_num_steps_, '= number of testing/validation samples')
-	flags.DEFINE_string('test_data_list', test_data_list_, 'testing/validation data list filename')
-	flags.DEFINE_boolean('visual', False, 'whether to save predictions for visualization')
-
-	# data
-	flags.DEFINE_string('data_dir', data_dir_, 'data directory')
-	flags.DEFINE_integer('batch_size', batch_size_, 'training batch size')
-	flags.DEFINE_integer('input_height', input_height_, 'input image height')
-	flags.DEFINE_integer('input_width', input_width_, 'input image width')
-	flags.DEFINE_integer('num_classes', num_classes_, 'number of classes')
-	flags.DEFINE_integer('ignore_label', 255, 'label pixel value that should be ignored')
-	flags.DEFINE_boolean('random_scale', False, 'whether to perform random scaling data-augmentation')
-	flags.DEFINE_boolean('random_mirror', False, 'whether to perform random left-right flipping data-augmentation')
-
-	# log
-	flags.DEFINE_string('modeldir', modeldir_, 'model directory')
-	flags.DEFINE_string('logfile', 'log.txt', 'training log filename')
-	flags.DEFINE_string('logdir', 'log', 'training log directory')
-
-	flags.FLAGS.__dict__['__parsed'] = False
-	return flags.FLAGS
-
-def main(_):
-	if args.option not in ['train', 'test', 'predict']:
-		print('invalid option: ', args.option)
-		print("Please input a option: train, test, or predict")
-	else:
-		# Set up tf session and initialize variables.
-		# config = tf.ConfigProto()
-		# config.gpu_options.allow_growth = True
-		# sess = tf.Session(config=config)
-		sess = tf.Session()
-		# Run
-		model = Model(sess, configure(test_data_list_=args.test_data_list, out_dir_=args.out_dir, test_step_=args.test_step, test_num_steps_=args.test_num_steps, modeldir_=args.modeldir, data_dir_=args.data_dir, num_steps_=args.num_steps, save_interval_=args.save_interval, learning_rate_=args.learning_rate, pretrain_file_=args.pretrain_file, data_list_=args.data_list, batch_size_=args.batch_size, input_height_=args.input_height, input_width_=args.input_width, num_classes_=args.num_classes))
-		getattr(model, args.option)()
+def main(args):
+    try:
+        # Setup GPU configuration
+        setup_gpu(args.gpu)
+        
+        # Validate configuration
+        validate_config(args)
+        
+        # Create model with TF2-compatible configuration (no session needed)
+        config = configure(args)
+        model = Model(config)  # Remove sess parameter
+        
+        # Execute the requested operation
+        getattr(model, args.option)()
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+    
+    return 0
 
 
 if __name__ == '__main__':
@@ -76,14 +70,16 @@ if __name__ == '__main__':
 
 	parser.add_argument('--option', dest='option', type=str, default='train',
 		help='actions: train, test, or predict')
-	parser.add_argument('--test_data_list', dest='test_data_list', type=str, default='./dataset/test.txt',
-		help='testing/validation data list filename')
 	parser.add_argument('--out_dir', dest='out_dir', type=str, default='output',
 		help='directory for saving testing outputs')
 	parser.add_argument('--test_step', dest='test_step', type=int, default=350000,
 		help='checkpoint number for testing/validation')
 	parser.add_argument('--test_num_steps', dest='test_num_steps', type=int, default=81605,
 		help='number of testing/validation samples')
+	parser.add_argument('--test_data_list', dest='test_data_list', type=str, default='./dataset/test.txt',
+		help='testing/validation data list filename')
+	parser.add_argument('--visual', dest='visual', type=bool, default=False,
+		help='whether to save predictions for visualization')
 	parser.add_argument('--modeldir', dest='modeldir', type=str, default='modelAugment',
 		help='model directory')
 	parser.add_argument('--data_dir', dest='data_dir', type=str, default='/hdd/wsi_fun/ImageAugCustom/AugmentationOutput',
@@ -94,12 +90,30 @@ if __name__ == '__main__':
 		help='maximum number of iterations')
 	parser.add_argument('--save_interval', dest='save_interval', type=int, default=15000,
 		help='number of iterations for saving and visualization')
+	parser.add_argument('--random_seed', dest='random_seed', type=int, default=1234,
+		help='random seed for initialization')
+	parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0.0005,
+		help='weight decay')
 	parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=2.5e-4,
 		help='learning rate')
+	parser.add_argument('--power', dest='power', type=float, default=0.9,
+		help='power for polynomial decay')
+	parser.add_argument('--momentum', dest='momentum', type=float, default=0.9,
+		help='momentum for SGD')
+	parser.add_argument('--encoder_name', dest='encoder_name', type=str, default='deeplab',
+		help='name of the pre-trained model, res101, res50 or deeplab')
 	parser.add_argument('--pretrain_file', dest='pretrain_file', type=str, default='deeplab_resnet.ckpt',
 		help='pre-trained model filename corresponding to encoder_name')
 	parser.add_argument('--data_list', dest='data_list', type=str, default='./dataAugment/train.txt',
 		help='training data list filename')
+
+	parser.add_argument('--valid_step', dest='valid_step', type=int, default=217000,
+		help='number of iterations for validation')
+	parser.add_argument('--valid_num_steps', dest='valid_num_steps', type=int, default=81605,
+		help='number of validation samples')
+	parser.add_argument('--valid_data_list', dest='valid_data_list', type=str, default='./dataAugment/val.txt',
+		help='validation data list filename')
+	
 	parser.add_argument('--batch_size', dest='batch_size', type=int, default=15,
 		help='training batch size')
 	parser.add_argument('--input_height', dest='input_height', type=int, default=256,
@@ -108,11 +122,21 @@ if __name__ == '__main__':
 		help='input image width')
 	parser.add_argument('--num_classes', dest='num_classes', type=int, default=2,
 		help='number of classes in images')
-
-
+	parser.add_argument('--ignore_label', dest='ignore_label', type=int, default=255,
+		help='label to ignore during training')
+	parser.add_argument('--random_scale', dest='random_scale', type=bool, default=False,
+		help='whether to perform random scaling data-augmentation')
+	parser.add_argument('--random_mirror', dest='random_mirror', type=bool, default=False,
+		help='whether to perform random left-right flipping data-augmentation')
+	
+	parser.add_argument('--logfile', dest='logfile', type=str, default='log.txt',
+		help='training log file name')
+	parser.add_argument('--logdir', dest='logdir', type=str, default='log',
+		help='traning log directory')
 
 	args = parser.parse_args()
 
-	# Choose which gpu or cpu to use
-	os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-	tf.app.run()
+	# Call main and exit with proper return code
+	exit_code = main(args)
+	if exit_code != 0:
+		exit(exit_code)

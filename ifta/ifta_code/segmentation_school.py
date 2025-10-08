@@ -1,7 +1,6 @@
 import os
 import argparse
 import sys
-import numpy as np
 import time
 
 #sys.path.append(os.getcwd()+'/Codes')
@@ -91,13 +90,14 @@ if __name__ == '__main__':
 
     # Main params (MANDITORY) ##############################################
     # School subject
-    parser.add_argument('--project', dest='project', default=' ', type=str,
+    parser.add_argument('--project', dest='project', default='project', type=str,
                         help='Starting directory to contain training project')
-    parser.add_argument('--input_files')
-    parser.add_argument('--basedir')
-    parser.add_argument('--model')
-    parser.add_argument('--girderApiUrl')
-    parser.add_argument('--girderToken')
+    parser.add_argument('--input_files', required=True)
+    parser.add_argument('--basedir', required=True)
+    parser.add_argument('--model', required=True)
+    parser.add_argument('--girderApiUrl', required=True)
+    parser.add_argument('--girderToken', required=True)
+
     # option
     parser.add_argument('--option', dest='option', default=' ', type=str, 
                         help='option for [new, train, predict, validate]')

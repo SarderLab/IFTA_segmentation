@@ -52,8 +52,9 @@ def prepare_label(input_batch, new_size, num_classes, one_hot=True):
       with last dimension comprised of 0's and 1's only.
     """
     with tf.name_scope('label_encode'):
-        input_batch = tf.image.resize_nearest_neighbor(input_batch, new_size) # as labels are integer numbers, need to use NN interp.
-        input_batch = tf.squeeze(input_batch, squeeze_dims=[3]) # reducing the channel dimension.
+        # TF2 replacement for resize_nearest_neighbor
+        input_batch = tf.image.resize(input_batch, new_size, method='nearest')
+        input_batch = tf.squeeze(input_batch, axis=[3]) # reducing the channel dimension.
         if one_hot:
             input_batch = tf.one_hot(input_batch, depth=num_classes)
     return input_batch

@@ -1,15 +1,19 @@
 import numpy as np
-import sys
-sys.path.append('..')
-from ifta_code.Codes.getWsi import getWsi
-from ifta_code.Codes.xml_to_mask import xml_to_mask
 from joblib import Parallel, delayed
 import multiprocessing
 from PIL import Image
 
+# Try absolute import first, then relative import
+try:
+    from getWsi import getWsi
+    from xml_to_mask import xml_to_mask
+except ImportError:
+    from .getWsi import getWsi
+    from .xml_to_mask import xml_to_mask
+
 def get_perf(wsi,xml1,xml2,args):
     if args.wsi_ext != '.tif':
-        WSIinfo=getWsi.getWsi(wsi)
+        WSIinfo=getWsi(wsi)
         dim_x, dim_y=WSIinfo.dimensions
     else:
         im = Image.open(wsi)

@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.misc import imread
 from skimage.color import rgb2hsv,hsv2rgb,rgb2lab,lab2rgb
 import matplotlib as plt
 import cv2

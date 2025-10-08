@@ -16,16 +16,15 @@ from skimage.color import rgb2lab
 from scipy.ndimage.measurements import label
 from scipy.ndimage.morphology import binary_fill_holes
 from glob import glob
-sys.path.append('..')
-from ifta_code.Codes.getWsi import getWsi
-from ifta_code.Codes.xml_to_mask import xml_to_mask,get_num_classes
+from getWsi import getWsi
+from xml_to_mask import xml_to_mask,get_num_classes
 from joblib import Parallel, delayed
 from shutil import rmtree,move,copyfile
 from imgaug import augmenters as iaa
-from ifta_code.Codes.randomHSVshift import randomHSVshift
-from ifta_code.Codes.generateTrainSet import generateDatalists
+from randomHSVshift import randomHSVshift
+from generateTrainSet import generateDatalists
 from subprocess import call
-from ifta_code.Codes.get_choppable_regions import get_choppable_regions
+from get_choppable_regions import get_choppable_regions
 """
 
 Code for - cutting / augmenting / training CNN
@@ -384,8 +383,6 @@ def IterateTraining(args):
     print('\nthen run [--option predict]\033[0m\n')
 
 
-
-
 def moveimages(startfolder,endfolder):
     filelist=glob(startfolder + '*')
     for file in filelist:
@@ -401,7 +398,7 @@ def train_net(training_args,dirs):
     print('Running [' + str( training_args['num_steps'] ), '] iterations')
     print('Saving every [' + str( training_args['save_interval'] ) + '] iterations')
 
-    call(['python3.5', dirs['basedir'] +'/Codes/Deeplab_network/main.py', '--option', 'train',
+    call(['python3', dirs['basedir'] +'/Codes/Deeplab_network/main.py', '--option', 'train',
         '--data_list', training_args['data_list'],
         '--num_steps', str(training_args['num_steps']),
         '--save_interval',str(training_args['save_interval']),
