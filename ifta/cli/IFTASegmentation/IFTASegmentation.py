@@ -1,11 +1,12 @@
 import os
 import sys
+from subprocess import call
 from ctk_cli import CLIArgumentParser
 
 sys.path.append("..")
 
 """
-    python3 ../ifta_code/segmentation_school.py 
+    segmentation_school.py 
         --option predict 
         --basedir /mnt/girder_worker/9df7a659f13f4508852b2c8c51d00358/68e5218da26c8afcfcdb1666/IFTA_test 
         --model /mnt/girder_worker/9df7a659f13f4508852b2c8c51d00358/68e55e00a26c8afcfcdbdb1e/ifta_tf2 
@@ -26,23 +27,12 @@ def print_args(args):
 
 
 
-def main(args):  
+def main(args):
+    print(sys.executable)
+
     print_args(args)
-
-    base_dir = str(args.basedir)
-    project_dir = os.path.join(base_dir, args.project)
-    if not os.path.exists(project_dir):
-        os.makedirs(project_dir)
-
-    model_dir = str(args.model)
-    if not os.path.exists(model_dir):
-        raise ValueError("Model directory does not exist: {}".format(model_dir))
-
-    print("Model files in directory:")
-    for model_file in os.listdir(model_dir):
-        print(model_file)
     
-    cmd = "python3 ../ifta_code/segmentation_school.py --option {} --basedir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --girderApiUrl {} --girderToken {} --input_files {}".format(
+    cmd = "python ../ifta_code/segmentation_school.py --option {} --basedir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --girderApiUrl {} --girderToken {} --input_files {}".format(
                     'predict', 
                     args.basedir, 
                     args.model, 
@@ -57,7 +47,7 @@ def main(args):
                 )
     print(cmd)
     sys.stdout.flush()
-    os.system(cmd)
+    rtn_code = call(cmd, shell=True)
 
 
 if __name__ == "__main__":

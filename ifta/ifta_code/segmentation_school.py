@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     # Main params (MANDITORY) ##############################################
     # School subject
-    parser.add_argument('--project', dest='project', default='project', type=str,
+    parser.add_argument('--project', dest='project', default=' ', type=str,
                         help='Starting directory to contain training project')
     parser.add_argument('--input_files', required=True)
     parser.add_argument('--basedir', required=True)
@@ -113,6 +113,8 @@ if __name__ == '__main__':
                         help='base directory of code folder')
 
     # Args for training / prediction ####################################################
+    parser.add_argument('--batch_size', dest='batch_size', default=2 ,type=int,
+        help='batch size for prediction')
     parser.add_argument('--gpu_num', dest='gpu_num', default=2, type=int,
                         help='number of GPUs avalable')
     parser.add_argument('--gpu', dest='gpu', default=0, type=int,

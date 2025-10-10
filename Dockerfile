@@ -4,7 +4,7 @@
 #
 # All plugins of HistomicsTK should derive from this docker image
 
-# start from TensorFlow 2.15 (Python 3.10) GPU base
+# Base: TensorFlow 2.15 (Python 3.10) GPU with matching CUDA/cuDNN
 FROM tensorflow/tensorflow:2.15.0-gpu
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 LABEL maintainer="Anish Tatke <anish.tatke@ufl.edu>"
@@ -20,8 +20,8 @@ ENV NVIDIA_VISIBLE_DEVICES=all \
 RUN rm -f /etc/apt/sources.list.d/cuda*.list || true
 
 RUN apt-get update; \
-    apt-get install -y --no-install-recommends software-properties-common; \
-    add-apt-repository -y ppa:deadsnakes/ppa; \
+    # apt-get install -y --no-install-recommends software-properties-common; \
+    # add-apt-repository -y ppa:deadsnakes/ppa; \
     apt-get autoremove; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -49,8 +49,7 @@ WORKDIR "${ifta_path}"
 # Copy source
 COPY . "${ifta_path}/"
 
-ENV PYTHON_BIN=/usr/bin/python3 \
-    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
+ENV PYTHON_BIN=/usr/bin/python \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -65,14 +64,16 @@ RUN set -eux; \
     fi;
 
 # Install IFTA package (setup.py drives dependencies)
-# Install with runtime extras so packages like numpy, matplotlib, imageio, etc. are available
-RUN ${PYTHON_BIN} -c "import sys; print(sys.executable); print(sys.version_info)" && \
-    ${PYTHON_BIN} -m pip install --no-cache-dir --upgrade pip setuptools wheel setuptools-scm && \
+RUN ${PYTHON_BIN} -m pip install --no-cache-dir --upgrade pip setuptools wheel setuptools-scm && \
     ${PYTHON_BIN} -m pip install --no-cache-dir /ifta && \
     # optional: verify imports
     ${PYTHON_BIN} -c "from matplotlib import pyplot as plt" && \
     ${PYTHON_BIN} -m pip list --format=freeze > /image-requirements.txt && \
     rm -rf /root/.cache/pip/*
+
+RUN ${PYTHON_BIN} -c "import sys; print(sys.executable); print(sys.version_info)" && \
+    ${PYTHON_BIN} -c "import numpy as np; print(np.__version__)" && \
+    ${PYTHON_BIN} -c "import tensorflow as tf; print(tf.__version__)"
 
 # Verify installation
 RUN ${PYTHON_BIN} --version && ${PYTHON_BIN} -m pip --version && ${PYTHON_BIN} -m pip freeze | tail -n +1 | head -n 50
