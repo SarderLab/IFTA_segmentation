@@ -2,17 +2,17 @@ import cv2
 import numpy as np
 import os
 import sys
-import argparse
 import multiprocessing
 import lxml.etree as ET
 import warnings
 import time
+import imageio
+
 from PIL import Image
 from glob import glob
 from subprocess import call
 from joblib import Parallel, delayed
 from skimage.io import imread
-import imageio
 from skimage.transform import resize
 from shutil import rmtree
 
@@ -26,9 +26,6 @@ from get_network_performance import get_perf
 Pipeline code to segment regions from WSI
 
 """
-
-# define xml class colormap
-xml_color = [65280, 65535, 255, 16711680, 33023]
 
 def validate(args):
     # define folder structure dict
@@ -91,7 +88,7 @@ def validate(args):
                 with open(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                     f.write('\t'+wsi.split('/')[-1]+'\t\t'+str(sensitivity)+'\t\t'+str(specificity)+'\t\t'+str(precision)+'\t\t'+str(accuracy)+'\t\t'+str(predictTime)+'\n')
 
-        print('\n\n\033[92;5mDone validating: \n\t\033[0m\n')
+        print('\nDone validating: \n')
 
 def predict(args):
     # define folder structure dict
@@ -127,7 +124,6 @@ def predict(args):
 
         for wsi in WSIs:
             predict_xml(args=args, dirs=dirs, wsi=wsi, iteration=iteration)
-
 
 def predict_xml(args, dirs, wsi, iteration):
     # reshape regions calc
@@ -240,7 +236,6 @@ def predict_xml(args, dirs, wsi, iteration):
         print('cleaning up')
         rmtree(dirs['outDir']+fileID)
 
-
 def get_iteration(args):
     currentmodels=os.listdir(args.base_dir + '/data/' + args.project + '/MODELS/')
 
@@ -288,7 +283,6 @@ def file_len(fname): # get txt file length (number of lines)
 
     else:
         return 0
-
 
 def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     print('\nopening: ' + wsi)
@@ -451,28 +445,26 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
 def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
     # make xml
     Annotations = xml_create()
+    annotation_index = 1
     # add annotation
-    for i in range(classNum)[1:]: # exclude background class
-        Annotations = xml_add_annotation(Annotations=Annotations, annotationID=i)
+    Annotations = xml_add_annotation(Annotations=Annotations, annotationID=annotation_index)
 
     unique_mask = []
     for i in range(0, len(wsiMask), 7000):
         unique_mask.extend(np.unique(wsiMask[i:i + 7000]))
+    
+    # print output
+    print('\t Working on: annotationID ' + str(annotation_index))
+    # get only 1 class binary mask
+    binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
+    binary_mask[wsiMask == annotation_index] = 1
+    print('Binary_mask ==', np.unique(binary_mask))
 
-    print(np.unique(wsiMask))
-    for value in np.unique(unique_mask)[1:]:
-        # print output
-        print('\t Working on: annotationID ' + str(value))
-        # get only 1 class binary mask
-        binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
-        binary_mask[wsiMask == value] = 1
-        print('Binary_mask ==', np.unique(binary_mask))
-
-        # add mask to xml
-        pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=value,offset={'X':glob_offset[0],'Y':glob_offset[1]})
-        for i in range(len(pointsList)):
-            pointList = pointsList[i]
-            Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=value)
+    # add mask to xml
+    pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=annotation_index,offset={'X':glob_offset[0],'Y':glob_offset[1]})
+    for i in range(len(pointsList)):
+        pointList = pointsList[i]
+        Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=annotation_index)
 
     # save xml
     xml_save(Annotations=Annotations, filename=dirs['xml_save_dir']+'/'+dirs['fileID']+'.xml')
@@ -493,13 +485,13 @@ def get_contour_points(mask, args, downsample,value, offset={'X': 0,'Y': 0}):
                 pointsList.append(pointList)
     return pointsList
 
-
 ### functions for building an xml tree of annotations ###
 def xml_create(): # create new xml tree
     # create new xml Tree - Annotations
     Annotations = ET.Element('Annotations')
     return Annotations
 
+xml_color = [65280, 65535, 255, 16711680, 33023]
 def xml_add_annotation(Annotations, annotationID=None): # add new annotation
     # add new Annotation to Annotations
     # defualts to new annotationID

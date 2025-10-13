@@ -2,24 +2,16 @@ import numpy as np
 import multiprocessing
 import os
 import sys
-import cv2
-import matplotlib.pyplot as plt
 import time
-import random
 import warnings
-import argparse
 
 from skimage.transform import resize
 from skimage.io import imread, imsave
-from skimage.morphology import remove_small_objects
-from skimage.color import rgb2lab
-from scipy.ndimage.measurements import label
-from scipy.ndimage.morphology import binary_fill_holes
 from glob import glob
 from getWsi import getWsi
 from xml_to_mask import xml_to_mask,get_num_classes
 from joblib import Parallel, delayed
-from shutil import rmtree,move,copyfile
+from shutil import move
 from imgaug import augmenters as iaa
 from randomHSVshift import randomHSVshift
 from generateTrainSet import generateDatalists

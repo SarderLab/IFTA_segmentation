@@ -34,10 +34,11 @@ PROJECT=ifta-dds-jhu
 
 python segmentation_school.py \
     --option predict \
-    --project DDS_JHU \
+    --project BrandonsData \
     --encoder_name deeplab \
     --one_network True \
     --batch_size 2 \
-    --classNum 4 \
     --boxSizeHR 3000 \
-    --overlap_percentHR 0.5
+    --classNum 4 \
+    --overlap_percentHR 0.5 \
+    --save_outputs True \
