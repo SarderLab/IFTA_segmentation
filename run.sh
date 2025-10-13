@@ -33,6 +33,7 @@ PROJECT=ifta-dds-jhu
 
 
 python segmentation_school.py \
+    --base_dir /orange/pinaki.sarder/$USER/IFTA_Seg/data \
     --option predict \
     --project BrandonsData \
     --encoder_name deeplab \

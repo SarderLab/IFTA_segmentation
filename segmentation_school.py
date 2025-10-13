@@ -100,7 +100,7 @@ if __name__ == '__main__':
         help='encoder options are res50, res101, or deeplab')
 
     # automatically generated
-    parser.add_argument('--base_dir', dest='base_dir', default=os.getcwd(),type=str,
+    parser.add_argument('--base_dir', dest='base_dir', default=os.getcwd(), type=str,
         help='base directory of code folder')
 
 
