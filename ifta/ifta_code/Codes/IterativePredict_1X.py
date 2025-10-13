@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import os
 import sys
-import argparse
 import multiprocessing
 import lxml.etree as ET
 import warnings
@@ -15,6 +14,8 @@ from skimage.io import imread
 import imageio
 from skimage.transform import resize
 from shutil import rmtree
+import json
+import girder_client
 
 sys.path.append(os.getcwd()+'/Codes')
 
@@ -57,14 +58,14 @@ def validate(args):
     # get all WSIs
     WSIs = []
     for ext in [args.wsi_ext]:
-        WSIs.append(glob(args.base_dir + args.project + dirs['validation_data_dir'] + '/*' + ext))
+        WSIs.append(glob(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + '/*' + ext))
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
 
     else:
         for iter in range(1,iteration+1):
-            dirs['xml_save_dir'] = args.base_dir + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
+            dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
 
 
             # check main directory exists
@@ -75,7 +76,7 @@ def validate(args):
 
             print('working on iteration: ' + str(iter))
 
-            with open(args.base_dir + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+            with open(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                 f.write('\niteration: \t'+str(iter)+'\n')
                 f.write('\twsi\t\t\tsensitivity\t\t\tspecificity\t\t\tprecision\t\t\taccuracy\t\t\tprediction time\n')
 
@@ -94,14 +95,14 @@ def validate(args):
                 predicted_xml = dirs['xml_save_dir'] + predicted_xml[-1]
                 sensitivity,specificity,precision,accuracy = get_perf(wsi=wsi, xml1=gt_xml, xml2 = predicted_xml, args=args)
 
-                with open(args.base_dir + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+                with open(args.base_dir + '/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                     f.write('\t'+wsi.split('/')[-1]+'\t\t'+str(sensitivity)+'\t\t'+str(specificity)+'\t\t'+str(precision)+'\t\t'+str(accuracy)+'\t\t'+str(predictTime)+'\n')
 
         print('\n\n\033[92;5mDone validating: \n\t\033[0m\n')
 
 def predict(args):
     # define folder structure dict
-    dirs = {'outDir': args.base_dir + args.project + args.outDir}
+    dirs = {'outDir': args.base_dir + '/' + args.project + args.outDir}
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
     dirs['mask_dir'] = '/wsi_mask/'
@@ -116,7 +117,7 @@ def predict(args):
     else:
         iteration = int(args.iteration)
 
-    dirs['xml_save_dir'] = args.base_dir + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
+    dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
@@ -127,7 +128,7 @@ def predict(args):
         make_folder(dirs['xml_save_dir'])
 
         # get all WSIs
-        for files in [args.input_files]:
+        for wsi in [args.input_files]:
             predict_xml(args=args, dirs=dirs, wsi=wsi, iteration=iteration)
 
 
@@ -139,7 +140,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
     # figure out the number of classes
     if args.classNum == 0:
-        annotatedXMLs=glob(args.base_dir + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
+        annotatedXMLs = glob(args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
         classes = []
         for xml in annotatedXMLs:
             classes.append(get_num_classes(xml))
@@ -157,15 +158,15 @@ def predict_xml(args, dirs, wsi, iteration):
         basename = os.path.splitext(wsi)[0]
 
         if wsi.split('.')[-1] != 'tif':
-            slide=getWsi(wsi)
+            slide = getWsi(wsi)
             # get image dimensions
-            dim_x, dim_y=slide.dimensions
+            dim_x, dim_y = slide.dimensions
         else:
             im = Image.open(wsi)
-            dim_x, dim_y=im.size
+            dim_x, dim_y = im.size
 
-        fileID=basename.split('/')
-        dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
+        fileID = basename.split('/')
+        dirs['fileID'] = fileID = fileID[len(fileID)-1].replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
 
     # call DeepLab for prediction
@@ -174,7 +175,7 @@ def predict_xml(args, dirs, wsi, iteration):
     make_folder(dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction')
 
     test_data_list = fileID + '_images' + '.txt'
-    modeldir = args.base_dir + args.project + dirs['modeldir'] + str(iteration) + '/HR'
+    modeldir = args.model
     test_step = get_test_step(modeldir)
 
     print("starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\n")
@@ -183,7 +184,8 @@ def predict_xml(args, dirs, wsi, iteration):
     batch_size = args.batch_size
     num_batches = (test_num_steps + batch_size - 1) // batch_size  # Ceiling division
 
-    deeplab_cmd = ['python3', args.base_dir+'/Codes/Deeplab_network/main.py',
+    # Construct the DeepLab command
+    deeplab_cmd = ['python', '../ifta_code/Codes/Deeplab_network/main.py',
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
@@ -224,8 +226,8 @@ def predict_xml(args, dirs, wsi, iteration):
     # save hotspots
     if dirs['save_outputs'] == True:
     	#reduce the resolution of the image
-        wsidims=wsiMask.shape
-        wsiMask_save=resize(wsiMask,(int(wsidims[0]/4),int(wsidims[1]/4)),order=0,preserve_range=True)
+        wsidims = wsiMask.shape
+        wsiMask_save = resize(wsiMask,(int(wsidims[0]/4),int(wsidims[1]/4)),order=0,preserve_range=True)
 
         make_folder(dirs['outDir'] + fileID + dirs['mask_dir'])
         print('saving to: ' + dirs['outDir'] + fileID + dirs['mask_dir'] + fileID  + '.png')
@@ -244,7 +246,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
 
 def get_iteration(args):
-    currentmodels=os.listdir(args.base_dir + args.project + '/MODELS/')
+    currentmodels=os.listdir(args.base_dir + '/' + args.project + '/MODELS/')
 
     if not currentmodels:
         return 'none'
@@ -453,31 +455,54 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
 def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
     # make xml
     Annotations = xml_create()
+    annotation_index = 1
     # add annotation
-    for i in range(classNum)[1:]: # exclude background class
-        Annotations = xml_add_annotation(Annotations=Annotations, annotationID=i)
+    Annotations = xml_add_annotation(Annotations=Annotations, annotationID=annotation_index)
 
     unique_mask = []
     for i in range(0, len(wsiMask), 7000):
         unique_mask.extend(np.unique(wsiMask[i:i + 7000]))
 
     print(np.unique(wsiMask))
-    for value in np.unique(unique_mask)[1:]:
-        # print output
-        print('\t Working on: annotationID ' + str(value))
-        # get only 1 class binary mask
-        binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
-        binary_mask[wsiMask == value] = 1
-        print('Binary_mask ==', np.unique(binary_mask))
+    
+    # print output
+    print('\t Working on: annotationID ' + str(annotation_index))
+    # get only 1 class binary mask
+    binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
+    binary_mask[wsiMask == annotation_index] = 1
+    print('Binary_mask ==', np.unique(binary_mask))
 
-        # add mask to xml
-        pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=value,offset={'X':glob_offset[0],'Y':glob_offset[1]})
-        for i in range(len(pointsList)):
-            pointList = pointsList[i]
-            Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=value)
+    # add mask to xml
+    pointsList = get_contour_points(binary_mask, args=args, downsample=downsample,value=annotation_index,offset={'X':glob_offset[0],'Y':glob_offset[1]})
+    for i in range(len(pointsList)):
+        pointList = pointsList[i]
+        Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=annotation_index)
 
     # save xml
-    xml_save(Annotations=Annotations, filename=dirs['xml_save_dir']+'/'+dirs['fileID']+'.xml')
+    upload_to_girder(args, Annotations)
+
+def upload_to_girder(args, Annotations):
+    folder = args.basedir
+    girder_folder_id = folder.split('/')[-2]
+    _ = os.system("printf 'Using data from girder_client Folder: {}\n'".format(folder))
+    file_name = args.input_files.split('/')[-1]
+    gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
+    gc.setToken(args.girderToken)
+
+    files = list(gc.listItem(girder_folder_id))
+    item_dict = dict()
+    for file in files:
+        d = {file['name']: file['_id']}
+        item_dict.update(d)
+
+    print(item_dict)
+
+    print('uploading annotation to girder...')
+    annots = convert_xml_json(Annotations, [args.output_annotation_name])
+    for annot in annots:
+        _ = gc.post(path='annotation', parameters={'itemId': item_dict[file_name]}, data=json.dumps(annot))
+
+    print(f'annotation {args.output_annotation_name} uploaded...\n')
 
 def get_contour_points(mask, args, downsample,value, offset={'X': 0,'Y': 0}):
     # returns a dict pointList with point 'X' and 'Y' values
@@ -537,3 +562,51 @@ def read_xml(filename):
     # import xml file
     tree = ET.parse(filename)
     root = tree.getroot()
+
+def convert_xml_json(root, names, colorList=None, alpha=0.4):
+    
+    if colorList == None:
+        colorList = ["rgb(0, 255, 128)", "rgb(0, 255, 255)", "rgb(255, 255, 0)", "rgb(255, 128, 0)", "rgb(0, 128, 255)",
+                     "rgb(0, 0, 255)", "rgb(0, 102, 0)", "rgb(153, 0, 0)", "rgb(0, 153, 0)", "rgb(102, 0, 204)",
+                     "rgb(76, 216, 23)", "rgb(102, 51, 0)", "rgb(128, 128, 128)", "rgb(0, 153, 153)", "rgb(0, 0, 0)"]
+        
+    anns = root.findall('Annotation')
+    assert len(anns) <= len(names)
+
+    data = []
+    for n, child in enumerate(anns):
+        dataDict = dict()
+        name = names[n]
+        _ = os.system("printf 'Building JSON layer: [{}]\n'".format(name))
+        element = []
+        reg = child.find('Regions')
+        for i in reg.findall('Region'):
+            eleDict = dict()
+            eleDict["closed"] = True
+
+            lineColor = colorList[n % len(colorList)]
+            eleDict["lineColor"] = lineColor
+
+            fillColor = lineColor[:3]+'a'+lineColor[3:-1] + f', {alpha})'
+            eleDict["fillColor"] = fillColor
+
+            eleDict["lineWidth"] = 2
+            points = []
+            ver = i.find('Vertices')
+            Verts = ver.findall('Vertex')
+            if len(Verts) <= 1:
+                continue  # skip if only 1 vertex points
+            for j in Verts:
+                eachPoint = []
+                eachPoint.append(float(j.get('X')))
+                eachPoint.append(float(j.get('Y')))
+                eachPoint.append(float(j.get('Z')))
+                points.append(eachPoint)
+            eleDict["points"] = points
+            eleDict["type"] = "polyline"
+            element.append(eleDict)
+        dataDict["elements"] = element
+        dataDict["name"] = name
+        data.append(dataDict)
+
+    return data    

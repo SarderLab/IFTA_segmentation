@@ -97,6 +97,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', required=True)
     parser.add_argument('--girderApiUrl', required=True)
     parser.add_argument('--girderToken', required=True)
+    parser.add_argument('--output_annotation_name', dest='output_annotation_name', default='ifta', type=str,
+                        help='Name for the output annotation')
 
     # option
     parser.add_argument('--option', dest='option', default=' ', type=str, 

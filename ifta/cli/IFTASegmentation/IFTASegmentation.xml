@@ -48,6 +48,14 @@
       <channel>input</channel>
       <index>4</index>
     </directory>
+    <string>
+      <name>annot_name</name>
+      <label>Annotation Name</label>
+      <description>Name for the output annotation</description>
+      <default>ifta</default>
+      <channel>input</channel>
+      <index>5</index>
+    </string>
   </parameters>
   <parameters advanced="true">
     <label>Girder API URL and Key</label>
