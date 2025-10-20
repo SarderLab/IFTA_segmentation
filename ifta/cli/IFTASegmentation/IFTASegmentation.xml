@@ -11,15 +11,15 @@
   <parameters>
     <label>IO</label>
     <description>Input/output parameters.</description>
-    <image>
-      <name>input_files</name>
+    <image reference="_girder_id_">
+      <name>input_file</name>
       <label>Input Image</label>
-      <description>input filename </description>
+      <description>Input Image</description>
       <channel>input</channel>
       <index>0</index>
     </image>
     <directory>
-      <name>basedir</name>
+      <name>base_dir</name>
       <label>Base Directory</label>
       <description>Base Directory for the image</description>
       <channel>input</channel>
@@ -49,7 +49,7 @@
       <index>4</index>
     </directory>
     <string>
-      <name>annot_name</name>
+      <name>output_annotation_name</name>
       <label>Annotation Name</label>
       <description>Name for the output annotation</description>
       <default>ifta</default>

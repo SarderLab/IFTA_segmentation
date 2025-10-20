@@ -108,8 +108,8 @@ def predict(args):
     dirs['mask_dir'] = '/wsi_mask/'
     dirs['chopped_dir'] = '/'
     dirs['save_outputs'] = args.save_outputs
-    dirs['modeldir'] = '/MODELS/'
     dirs['training_data_dir'] = '/TRAINING_data/'
+    dirs['logging_dir'] = args.base_dir + '/' + args.project + '/LOGS/'
 
     # find current iteration
     if args.iteration == 'none':
@@ -117,7 +117,7 @@ def predict(args):
     else:
         iteration = int(args.iteration)
 
-    dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
+    dirs['xml_save_dir'] = args.base_dir + '/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/Predicted_XMLs/'
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
@@ -128,8 +128,9 @@ def predict(args):
         make_folder(dirs['xml_save_dir'])
 
         # get all WSIs
-        for wsi in [args.input_files]:
-            predict_xml(args=args, dirs=dirs, wsi=wsi, iteration=iteration)
+        for name, path in zip([args.input_file], [args.input_path]):
+            if os.path.exists(path) and os.path.isfile(path):
+                predict_xml(args=args, dirs=dirs, wsi={"name": name, "path": path}, iteration=iteration)
 
 
 def predict_xml(args, dirs, wsi, iteration):
@@ -155,18 +156,18 @@ def predict_xml(args, dirs, wsi, iteration):
         dirs['fileID'] = fileID
         print('Chop SUEY!\n')
     else:
-        basename = os.path.splitext(wsi)[0]
+        
 
-        if wsi.split('.')[-1] != 'tif':
-            slide = getWsi(wsi)
+        if wsi['name'].split('.')[-1] != 'tif':
+            slide = getWsi(wsi['path'])
             # get image dimensions
             dim_x, dim_y = slide.dimensions
         else:
-            im = Image.open(wsi)
+            im = Image.open(wsi['path'])
             dim_x, dim_y = im.size
 
-        fileID = basename.split('/')
-        dirs['fileID'] = fileID = fileID[len(fileID)-1].replace(' ', '_')
+        fileID = wsi['name'].split('.')[-2]
+        dirs['fileID'] = fileID = fileID.replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
 
     # call DeepLab for prediction
@@ -176,9 +177,6 @@ def predict_xml(args, dirs, wsi, iteration):
 
     test_data_list = fileID + '_images' + '.txt'
     modeldir = args.model
-    test_step = get_test_step(modeldir)
-
-    print("starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\n")
     
     # Debug: Show the exact command being run
     batch_size = args.batch_size
@@ -189,15 +187,16 @@ def predict_xml(args, dirs, wsi, iteration):
         '--option', 'predict',
         '--test_data_list', dirs['outDir']+fileID+dirs['txt_save_dir']+test_data_list,
         '--out_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
-        '--test_step', str(test_step),
         '--test_num_steps', str(num_batches),  # Use number of batches, not number of images
         '--modeldir', modeldir,
         '--data_dir', dirs['outDir']+fileID+dirs['img_save_dir'],
         '--num_classes', str(classNum),
         '--gpu', str(args.gpu),
         '--encoder_name',args.encoder_name,
-        '--batch_size', str(batch_size)]
-    
+        '--batch_size', str(batch_size),
+        '--logdir', dirs['logging_dir']
+    ]
+
     print("DeepLab command:", ' '.join(deeplab_cmd))
     print(f"Processing {test_num_steps} images in {num_batches} batches of {batch_size}")
     return_code = call(deeplab_cmd)
@@ -237,7 +236,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
     print('\n\nStarting XML construction: ')
 
-    xml_suey(wsiMask=wsiMask, dirs=dirs, args=args, classNum=classNum, downsample=downsample,glob_offset=[0,0])
+    xml_suey(wsiMask=wsiMask, args=args, downsample=downsample, glob_offset=[0,0])
 
     # clean up
     if dirs['save_outputs'] == False:
@@ -295,19 +294,18 @@ def file_len(fname): # get txt file length (number of lines)
 
 
 def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
-    print('\nopening: ' + wsi)
-    basename = os.path.splitext(wsi)[0]
+    print('\nopening: ' + wsi['name'])
 
-    if wsi.split('.')[-1] != 'tif':
-        slide=getWsi(wsi)
+    if wsi['name'].split('.')[-1] != 'tif':
+        slide=getWsi(wsi['path'])
         # get image dimensions
         dim_x, dim_y=slide.dimensions
     else:
-        im = Image.open(wsi)
+        im = Image.open(wsi['path'])
         dim_x, dim_y=im.size
 
-    fileID=basename.split('/')
-    dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
+    fileID=wsi['name'].split('.')[-2]
+    dirs['fileID'] = fileID = fileID.replace(' ', '_')
     print('\nchopping ...\n')
 
     # make txt file
@@ -357,13 +355,13 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
         xLen=xEnd-xStart
         yLen=yEnd-yStart
 
-        if wsi.split('.') != 'tif':
-            slide = getWsi(wsi)
+        if wsi['name'].split('.')[-1] != 'tif':
+            slide = getWsi(wsi['path'])
             subsect= np.array(slide.read_region((xStart,yStart),0,(xLen,yLen)))
             subsect=subsect[:,:,:3]
 
         else:
-            subsect_ = imread(wsi)[yStart:yEnd, xStart:xEnd, :3]
+            subsect_ = imread(wsi['path'])[yStart:yEnd, xStart:xEnd, :3]
             subsect = np.zeros([region_size,region_size,3])
             subsect[0:subsect_.shape[0], 0:subsect_.shape[1], :] = subsect_
 
@@ -452,7 +450,7 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
 
     return wsiMask
 
-def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
+def xml_suey(wsiMask, args, downsample, glob_offset):
     # make xml
     Annotations = xml_create()
     annotation_index = 1
@@ -482,14 +480,13 @@ def xml_suey(wsiMask, dirs, args, classNum, downsample,glob_offset):
     upload_to_girder(args, Annotations)
 
 def upload_to_girder(args, Annotations):
-    folder = args.basedir
-    girder_folder_id = folder.split('/')[-2]
-    _ = os.system("printf 'Using data from girder_client Folder: {}\n'".format(folder))
-    file_name = args.input_files.split('/')[-1]
+    print(f"Using data from girder_client Folder: {args.project}")
+
+    file_name = args.input_file
     gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
     gc.setToken(args.girderToken)
 
-    files = list(gc.listItem(girder_folder_id))
+    files = list(gc.listItem(args.girderFolderId))
     item_dict = dict()
     for file in files:
         d = {file['name']: file['_id']}
@@ -504,7 +501,7 @@ def upload_to_girder(args, Annotations):
 
     print(f'annotation {args.output_annotation_name} uploaded...\n')
 
-def get_contour_points(mask, args, downsample,value, offset={'X': 0,'Y': 0}):
+def get_contour_points(mask, args, downsample, value, offset={'X': 0,'Y': 0}):
     # returns a dict pointList with point 'X' and 'Y' values
     # input greyscale binary image
     maskPoints, contours = cv2.findContours(np.array(mask), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
@@ -577,7 +574,7 @@ def convert_xml_json(root, names, colorList=None, alpha=0.4):
     for n, child in enumerate(anns):
         dataDict = dict()
         name = names[n]
-        _ = os.system("printf 'Building JSON layer: [{}]\n'".format(name))
+        print(f"Building JSON layer: [{name}]")
         element = []
         reg = child.find('Regions')
         for i in reg.findall('Region'):

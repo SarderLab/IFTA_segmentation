@@ -77,19 +77,17 @@ if __name__ == '__main__':
 
 	parser.add_argument('--option', dest='option', type=str, default='train',
 		help='actions: train, test, or predict')
-	parser.add_argument('--out_dir', dest='out_dir', type=str, default='output',
+	parser.add_argument('--out_dir', dest='out_dir', type=str, required=True,
 		help='directory for saving testing outputs')
-	parser.add_argument('--test_step', dest='test_step', type=int, default=00000,
-		help='checkpoint number for testing/validation')
 	parser.add_argument('--test_num_steps', dest='test_num_steps', type=int, default=81605,
 		help='number of testing/validation samples')
-	parser.add_argument('--test_data_list', dest='test_data_list', type=str, default='./dataset/test.txt',
+	parser.add_argument('--test_data_list', dest='test_data_list', type=str, required=True,
 		help='testing/validation data list filename')
 	parser.add_argument('--visual', dest='visual', type=bool, default=False,
 		help='whether to save predictions for visualization')
 	parser.add_argument('--modeldir', dest='modeldir', type=str, default='modelAugment',
 		help='model directory')
-	parser.add_argument('--data_dir', dest='data_dir', type=str, default='/hdd/wsi_fun/ImageAugCustom/AugmentationOutput',
+	parser.add_argument('--data_dir', dest='data_dir', type=str, required=True,
 		help='data directory')
 	parser.add_argument('--gpu', dest='gpu', type=str, default='0',
 		help='specify which GPU to use')
@@ -109,7 +107,7 @@ if __name__ == '__main__':
 		help='momentum for SGD')
 	parser.add_argument('--encoder_name', dest='encoder_name', type=str, default='deeplab',
 		help='name of the pre-trained model, res101, res50 or deeplab')
-	parser.add_argument('--pretrain_file', dest='pretrain_file', type=str, default='deeplab_resnet.ckpt',
+	parser.add_argument('--pretrain_file', dest='pretrain_file', type=str, default='deeplabv2.ckpt',
 		help='pre-trained model filename corresponding to encoder_name')
 	parser.add_argument('--data_list', dest='data_list', type=str, default='./dataAugment/train.txt',
 		help='training data list filename')

@@ -71,6 +71,7 @@ RUN ${PYTHON_BIN} -m pip install --no-cache-dir --upgrade pip setuptools wheel s
     ${PYTHON_BIN} -m pip list --format=freeze > /image-requirements.txt && \
     rm -rf /root/.cache/pip/*
 
+# Sanity checks
 RUN ${PYTHON_BIN} -c "import sys; print(sys.executable); print(sys.version_info)" && \
     ${PYTHON_BIN} -c "import numpy as np; print(np.__version__)" && \
     ${PYTHON_BIN} -c "import tensorflow as tf; print(tf.__version__)"
@@ -80,6 +81,7 @@ RUN ${PYTHON_BIN} --version && ${PYTHON_BIN} -m pip --version && ${PYTHON_BIN} -
 
 # Define entrypoint through which all CLIs can be run
 WORKDIR "${ifta_path}/ifta/cli"
+LABEL entry_path="${ifta_path}/ifta/cli"
 
 # Test CLI discovery (optional; keep if you want to fail fast during build)
 RUN ${PYTHON_BIN} -m slicer_cli_web.cli_list_entrypoint --list_cli && \

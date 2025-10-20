@@ -15,8 +15,8 @@ except ImportError:
     from .getWsi import getWsi
 
 def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
-    if wsi.split('.')[-1] != 'tif':
-        slide=getWsi(wsi)
+    if wsi['name'].split('.')[-1] != 'tif':
+        slide=getWsi(wsi['path'])
         slide_level = slide.level_count-1
 
         fullSize=slide.level_dimensions[0]
@@ -24,8 +24,6 @@ def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
         ds_1=fullSize[0]/16
         ds_2=fullSize[1]/16
         Im=np.array(slide.get_thumbnail((ds_1,ds_2)))
-
-        ID=wsi.split('.svs')[0]
 
         hsv=rgb2hsv(Im)
 
