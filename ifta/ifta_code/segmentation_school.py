@@ -92,13 +92,13 @@ if __name__ == '__main__':
     # School subject
     parser.add_argument('--project', dest='project', default=' ', type=str,
                         help='Starting directory to contain training project')
-    parser.add_argument('--input_path', required=True, type=str, help='path to input image or folder of images')
-    parser.add_argument('--input_file', required=True, type=str, help='name of input image or folder of images')
-    parser.add_argument('--base_dir', required=True, type=str, help='base directory of code folder')
-    parser.add_argument('--model', required=True, type=str, help='path to model file')
-    parser.add_argument('--girderApiUrl', required=True, type=str, help='Girder API URL')
-    parser.add_argument('--girderToken', required=True, type=str, help='Girder API token')
-    parser.add_argument('--girderFolderId', required=True, type=str, help='Girder Folder ID')
+    parser.add_argument('--input_path', dest='input_path', required=True, type=str, help='path to input image or folder of images')
+    parser.add_argument('--input_file', dest='input_file', required=True, type=str, help='name of input image or folder of images')
+    parser.add_argument('--base_dir', dest='base_dir', required=True, type=str, help='base directory of code folder')
+    parser.add_argument('--model', dest='model', required=True, type=str, help='path to model file')
+    parser.add_argument('--girderApiUrl', dest='girderApiUrl', required=True, type=str, help='Girder API URL')
+    parser.add_argument('--girderToken', dest='girderToken', required=True, type=str, help='Girder API token')
+    parser.add_argument('--girderFolderId', dest='girderFolderId', required=True, type=str, help='Girder Folder ID')
     parser.add_argument('--output_annotation_name', dest='output_annotation_name', default='ifta', type=str,
                         help='Name for the output annotation')
 

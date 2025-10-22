@@ -31,7 +31,7 @@ def download_image(gc, input_image_info, base_dir):
     except Exception as e:
         print(f"Error downloading file {input_name}: {e}")
 
-def main(args, **kwargs):
+def main(args):
     print(sys.executable)
 
     print_args(args)
@@ -51,9 +51,10 @@ def main(args, **kwargs):
     input_image_info = get_image_info(gc, args.input_file)
     input_file = input_image_info['name']
     input_path = download_image(gc, input_image_info, base_dir)
+    output_annotation_name = args.output_annotation_name.replace(" ", "_")
 
     print("Input file: {}".format(input_file))
-    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --girderApiUrl {} --girderToken {} --input_file {} --input_path {} --girderFolderId {} --output_annotation_name {}".format(
+    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --girderApiUrl {} --girderToken {} --input_file '{}' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
         project_name,
         'predict',
         base_dir,
@@ -68,7 +69,7 @@ def main(args, **kwargs):
         input_file,
         input_path,
         girder_folder_id,
-        args.output_annotation_name
+        output_annotation_name
     )
     print(cmd)
     sys.stdout.flush()
