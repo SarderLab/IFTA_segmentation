@@ -16,6 +16,7 @@ from skimage.transform import resize
 from shutil import rmtree
 import json
 import girder_client
+from pathlib import Path
 
 sys.path.append(os.getcwd()+'/Codes')
 
@@ -156,15 +157,10 @@ def predict_xml(args, dirs, wsi, iteration):
         dirs['fileID'] = fileID
         print('Chop SUEY!\n')
     else:
-        
-
         if wsi['name'].split('.')[-1] != 'tif':
             slide = getWsi(wsi['path'])
             # get image dimensions
             dim_x, dim_y = slide.dimensions
-        else:
-            im = Image.open(wsi['path'])
-            dim_x, dim_y = im.size
 
         fileID = wsi['name'].split('.')[-2]
         dirs['fileID'] = fileID = fileID.replace(' ', '_')
@@ -276,10 +272,43 @@ def restart_line(): # for printing chopped image labels in command line
     sys.stdout.write('\r')
     sys.stdout.flush()
 
-def getWsi(path): #imports a WSI
-    import openslide
-    slide = openslide.OpenSlide(path)
-    return slide
+# def getWsi(path): #imports a WSI
+#     try:
+#         import openslide
+#         from openslide.lowlevel import OpenSlideUnsupportedFormatError
+#         slide = openslide.OpenSlide(path)
+#         return slide
+#     except OpenSlideUnsupportedFormatError as e:
+#         from tiffslide import TiffSlide
+#         slide = TiffSlide(path)
+#         return slide
+
+def getWsi(path: str):
+    path = str(path)
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"WSI path does not exist in container: {path}")
+
+    # Try TiffSlide first
+    try:
+        from tiffslide import TiffSlide
+        slide = TiffSlide(path)
+        print(f"Opened WSI with TiffSlide: {path}")
+        return slide
+    except Exception as tiff_err:
+        print(f"TiffSlide could not open {path}: {tiff_err!r}")
+        # Fall back to OpenSlide
+        try:
+            import openslide
+            slide = openslide.OpenSlide(path)
+            print(f"Opened WSI with OpenSlide: {path}")
+            return slide
+        except openslide.OpenSlideError as os_err:
+            raise RuntimeError(
+                f"Neither TiffSlide nor OpenSlide can open '{path}'. "
+                "Check that the file is a valid WSI and mounted correctly in the container."
+            ) from os_err
+
 
 def file_len(fname): # get txt file length (number of lines)
     with open(fname) as f:
@@ -296,13 +325,9 @@ def file_len(fname): # get txt file length (number of lines)
 def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     print('\nopening: ' + wsi['name'])
 
-    if wsi['name'].split('.')[-1] != 'tif':
-        slide=getWsi(wsi['path'])
-        # get image dimensions
-        dim_x, dim_y=slide.dimensions
-    else:
-        im = Image.open(wsi['path'])
-        dim_x, dim_y=im.size
+    slide = getWsi(wsi['path'])
+    # get image dimensions
+    dim_x, dim_y = slide.dimensions
 
     fileID=wsi['name'].split('.')[-2]
     dirs['fileID'] = fileID = fileID.replace(' ', '_')
