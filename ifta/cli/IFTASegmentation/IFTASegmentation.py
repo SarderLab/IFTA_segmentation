@@ -50,11 +50,15 @@ def main(args):
     gc = get_girder_client(args)
     input_image_info = get_image_info(gc, args.input_file)
     input_file = input_image_info['name']
+    file_ext = str(os.path.splitext(input_file)[1].lower())
+    if file_ext not in ['.tif', '.svs']:
+        raise ValueError("Unsupported file format: {}. Only .tif and .svs are supported.".format(file_ext))
+    
     input_path = download_image(gc, input_image_info, base_dir)
     output_annotation_name = args.output_annotation_name.replace(" ", "_")
 
     print("Input file: {}".format(input_file))
-    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --girderApiUrl {} --girderToken {} --input_file '{}' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
+    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --wsi_ext {} --girderApiUrl {} --girderToken {} --input_file '{}' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
         project_name,
         'predict',
         base_dir,
@@ -64,6 +68,7 @@ def main(args):
         4, 
         'True', 
         'deeplab', 
+        file_ext,
         args.girderApiUrl, 
         args.girderToken, 
         input_file,

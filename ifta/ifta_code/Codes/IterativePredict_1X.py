@@ -25,10 +25,12 @@ try:
     from xml_to_mask import get_num_classes
     from get_choppable_regions import get_choppable_regions
     from get_network_performance import get_perf
+    from getWsi import getWsi
 except ImportError:
     from .xml_to_mask import get_num_classes
     from .get_choppable_regions import get_choppable_regions
     from .get_network_performance import get_perf
+    from .getWsi import getWsi
 
 """
 Pipeline code to segment regions from WSI
@@ -157,11 +159,9 @@ def predict_xml(args, dirs, wsi, iteration):
         dirs['fileID'] = fileID
         print('Chop SUEY!\n')
     else:
-        if wsi['name'].split('.')[-1] != 'tif':
-            slide = getWsi(wsi['path'])
-            # get image dimensions
-            dim_x, dim_y = slide.dimensions
-
+        slide = getWsi(wsi['path'])
+        # get image dimensions
+        dim_x, dim_y = slide.dimensions
         fileID = wsi['name'].split('.')[-2]
         dirs['fileID'] = fileID = fileID.replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
@@ -272,44 +272,6 @@ def restart_line(): # for printing chopped image labels in command line
     sys.stdout.write('\r')
     sys.stdout.flush()
 
-# def getWsi(path): #imports a WSI
-#     try:
-#         import openslide
-#         from openslide.lowlevel import OpenSlideUnsupportedFormatError
-#         slide = openslide.OpenSlide(path)
-#         return slide
-#     except OpenSlideUnsupportedFormatError as e:
-#         from tiffslide import TiffSlide
-#         slide = TiffSlide(path)
-#         return slide
-
-def getWsi(path: str):
-    path = str(path)
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"WSI path does not exist in container: {path}")
-
-    # Try TiffSlide first
-    try:
-        from tiffslide import TiffSlide
-        slide = TiffSlide(path)
-        print(f"Opened WSI with TiffSlide: {path}")
-        return slide
-    except Exception as tiff_err:
-        print(f"TiffSlide could not open {path}: {tiff_err!r}")
-        # Fall back to OpenSlide
-        try:
-            import openslide
-            slide = openslide.OpenSlide(path)
-            print(f"Opened WSI with OpenSlide: {path}")
-            return slide
-        except openslide.OpenSlideError as os_err:
-            raise RuntimeError(
-                f"Neither TiffSlide nor OpenSlide can open '{path}'. "
-                "Check that the file is a valid WSI and mounted correctly in the container."
-            ) from os_err
-
-
 def file_len(fname): # get txt file length (number of lines)
     with open(fname) as f:
         for i, l in enumerate(f):
@@ -374,21 +336,14 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
 def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, region_size, args, wsi, choppable_regions): # perform cutting in parallel
     if choppable_regions[idxy, idxx] != 0:
         yEnd = yStart+region_size
-        
         xEnd = xStart+region_size
-        
         xLen=xEnd-xStart
         yLen=yEnd-yStart
 
-        if wsi['name'].split('.')[-1] != 'tif':
-            slide = getWsi(wsi['path'])
-            subsect= np.array(slide.read_region((xStart,yStart),0,(xLen,yLen)))
-            subsect=subsect[:,:,:3]
-
-        else:
-            subsect_ = imread(wsi['path'])[yStart:yEnd, xStart:xEnd, :3]
-            subsect = np.zeros([region_size,region_size,3])
-            subsect[0:subsect_.shape[0], 0:subsect_.shape[1], :] = subsect_
+        slide = getWsi(wsi['path'])
+        tile = slide.read_region((xStart, yStart), level=0, size=(region_size, region_size))
+        tile = tile.convert("RGB")
+        subsect = np.array(tile, dtype=np.uint8)
 
         imageIter = str(xStart)+str(yStart)
 
@@ -412,13 +367,13 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
         directory = dirs['outDir'] + dirs['fileID'] + dirs['img_save_dir'] + dirs['chopped_dir']
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            if np.issubdtype(subsect.dtype, np.floating):
+                subsect = (np.clip(subsect, 0, 1) * 255).astype(np.uint8)
             imageio.imwrite(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
 
         f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()
         f2.close()
-
-        # restart_line()
 
 def un_suey(dirs, args): # reconstruct wsi from predicted masks
     txtFile = dirs['fileID'] + '.txt'

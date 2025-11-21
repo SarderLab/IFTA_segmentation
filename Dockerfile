@@ -29,12 +29,14 @@ RUN apt-get update; \
 RUN apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get --yes --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        git curl ca-certificates wget unzip \
+        git curl cmake ca-certificates wget unzip \
         build-essential pkg-config \
         libxml2-dev libxslt1-dev \
         openslide-tools libopenslide0 \
         libvips \
         ffmpeg libsm6 libxext6 libgl1 libglib2.0-0 \
+        libjpeg-turbo8-dev zlib1g-dev libpng-dev libopenjp2-7-dev libtiff5 libtiff-dev \
+        libfreetype6-dev libwebp-dev libopenexr-dev \
         memcached; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
