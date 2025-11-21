@@ -7,8 +7,8 @@
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=1
 #SBATCH --time=72:00:00
-#SBATCH --output=logs/ifta_seg__%j.out
-#SBATCH --job-name="new_ifta"
+#SBATCH --output=logs/ifta_seg_%j.out
+#SBATCH --job-name="ifta-seg"
 
 
 #SBATCH --mail-type=END,FAIL
@@ -29,10 +29,9 @@ module load conda
 conda activate ifta_tf215
 
 USER=anish.tatke
-PROJECT=new_ifta
+PROJECT=ifta-seg
 
 DATA_DIR=/orange/pinaki.sarder/$USER/IFTA_Seg
-
 
 python segmentation_school.py \
     --data_dir $DATA_DIR \
@@ -44,4 +43,3 @@ python segmentation_school.py \
     --boxSizeHR 3000 \
     --classNum 4 \
     --overlap_percentHR 0.5 \
-    --wsi_ext .tif \
