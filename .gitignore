@@ -1,7 +1,7 @@
 *.pyc
 __pycache__/
-Codes/__pycache__/*.pyc
 Codes/__pycache__/
+Codes/__pycache__/*.pyc
 
 log/
 logs/
@@ -13,3 +13,4 @@ TF1-2.pdf
 run.sh
 
 MODELS/
+sif_images/

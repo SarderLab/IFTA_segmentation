@@ -1,6 +1,6 @@
 
 import numpy as np
-from getWsi import getWsi
+from Codes.getWsi import getWsi
 from skimage.filters import threshold_otsu
 from skimage.morphology import binary_closing, disk, remove_small_objects,label
 from scipy.ndimage.morphology import binary_fill_holes
@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.filters import gaussian
 from skimage.morphology import binary_dilation, diamond
-def get_choppable_regions(wsi,index_x, index_y, boxSize,white_percent):
+
+def get_choppable_regions(wsi,index_x, index_y, boxSize, white_percent):
     if wsi.split('.')[-1] != 'tif':
         slide=getWsi(wsi)
         slide_level = slide.level_count-1

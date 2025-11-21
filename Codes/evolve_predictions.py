@@ -20,9 +20,9 @@ from skimage.segmentation import clear_border
 from skimage.morphology import remove_small_objects
 from skimage import color
 from shutil import rmtree
-from IterativeTraining import get_num_classes
-from get_choppable_regions import get_choppable_regions
-from get_network_performance import get_perf
+from Codes.IterativeTraining import get_num_classes
+from Codes.get_choppable_regions import get_choppable_regions
+from Codes.get_network_performance import get_perf
 
 """
 Code to test a WSI using all saved models in project

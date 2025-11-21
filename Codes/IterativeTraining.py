@@ -16,15 +16,15 @@ from skimage.color import rgb2lab
 from scipy.ndimage.measurements import label
 from scipy.ndimage.morphology import binary_fill_holes
 from glob import glob
-from getWsi import getWsi
-from xml_to_mask import xml_to_mask,get_num_classes
+from Codes.getWsi import getWsi
+from Codes.xml_to_mask import xml_to_mask,get_num_classes
 from joblib import Parallel, delayed
 from shutil import rmtree,move,copyfile
 from imgaug import augmenters as iaa
-from randomHSVshift import randomHSVshift
-from generateTrainSet import generateDatalists
+from Codes.randomHSVshift import randomHSVshift
+from Codes.generateTrainSet import generateDatalists
 from subprocess import call
-from get_choppable_regions import get_choppable_regions
+from Codes.get_choppable_regions import get_choppable_regions
 """
 
 Code for - cutting / augmenting / training CNN

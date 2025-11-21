@@ -8,19 +8,20 @@ import warnings
 import time
 import imageio
 
-from PIL import Image
 from glob import glob
 from subprocess import call
 from joblib import Parallel, delayed
 from skimage.io import imread
 from skimage.transform import resize
 from shutil import rmtree
+from pathlib import Path
 
 sys.path.append(os.getcwd()+'/Codes')
 
-from IterativeTraining import get_num_classes
-from get_choppable_regions import get_choppable_regions
-from get_network_performance import get_perf
+from Codes.IterativeTraining import get_num_classes
+from Codes.get_choppable_regions import get_choppable_regions
+from Codes.get_network_performance import get_perf
+from Codes.getWsi import getWsi
 
 """
 Pipeline code to segment regions from WSI
@@ -29,7 +30,7 @@ Pipeline code to segment regions from WSI
 
 def validate(args):
     # define folder structure dict
-    dirs = {'outDir': args.base_dir + '/' + args.project + args.outDir}
+    dirs = {'outDir': args.data_dir + '/data/' + args.project + args.outDir}
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
     dirs['mask_dir'] = '/wsi_mask/'
@@ -48,14 +49,14 @@ def validate(args):
     # get all WSIs
     WSIs = []
     for ext in [args.wsi_ext]:
-        WSIs.append(glob(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + '/*' + ext))
+        WSIs.append(glob(args.data_dir + '/data/' + args.project + dirs['validation_data_dir'] + '/*' + ext))
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
 
     else:
         for iter in range(1,iteration+1):
-            dirs['xml_save_dir'] = args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
+            dirs['xml_save_dir'] = args.data_dir + '/data/' + args.project + dirs['validation_data_dir'] + str(iter) + '_Predicted_XMLs/'
 
 
             # check main directory exists
@@ -66,7 +67,7 @@ def validate(args):
 
             print('working on iteration: ' + str(iter))
 
-            with open(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+            with open(args.data_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                 f.write('\niteration: \t'+str(iter)+'\n')
                 f.write('\twsi\t\t\tsensitivity\t\t\tspecificity\t\t\tprecision\t\t\taccuracy\t\t\tprediction time\n')
 
@@ -85,16 +86,21 @@ def validate(args):
                 predicted_xml = dirs['xml_save_dir'] + predicted_xml[-1]
                 sensitivity,specificity,precision,accuracy = get_perf(wsi=wsi, xml1=gt_xml, xml2 = predicted_xml, args=args)
 
-                with open(args.base_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
+                with open(args.data_dir + '/data/' + args.project + dirs['validation_data_dir'] + 'validation_stats.txt', 'a') as f:
                     f.write('\t'+wsi.split('/')[-1]+'\t\t'+str(sensitivity)+'\t\t'+str(specificity)+'\t\t'+str(precision)+'\t\t'+str(accuracy)+'\t\t'+str(predictTime)+'\n')
 
         print('\nDone validating: \n')
 
 def predict(args):
+    print(os.getenv("TMPDIR"))
+    print("Creating temporary directory...")
+    os.makedirs(os.path.join(os.getenv("TMPDIR"), "temp"), exist_ok=True)
+
     # define folder structure dict
-    dirs = {'outDir': args.base_dir + '/data/' + args.project + args.outDir}
+    dirs = {'outDir': args.data_dir + '/data/' + args.project + args.outDir}
     dirs['txt_save_dir'] = '/txt_files/'
     dirs['img_save_dir'] = '/img_files/'
+    dirs['debug_dir'] = '/debug_files/'
     dirs['mask_dir'] = '/wsi_mask/'
     dirs['chopped_dir'] = '/'
     dirs['save_outputs'] = args.save_outputs
@@ -107,12 +113,14 @@ def predict(args):
     else:
         iteration = int(args.iteration)
 
-    dirs['xml_save_dir'] = args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
+    dirs['xml_save_dir'] = args.data_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/Predicted_XMLs/'
 
     if iteration == 'none':
         print('ERROR: no trained models found \n\tplease use [--option train]')
 
     else:
+        print(dirs['outDir'])
+        
         # check main directory exists
         make_folder(dirs['outDir'])
         make_folder(dirs['xml_save_dir'])
@@ -120,7 +128,7 @@ def predict(args):
         # get all WSIs
         WSIs = []
         for ext in [args.wsi_ext]:
-            WSIs.extend(glob(args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/*' + ext))
+            WSIs.extend(glob(args.data_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration) + '/*' + ext))
 
         for wsi in WSIs:
             predict_xml(args=args, dirs=dirs, wsi=wsi, iteration=iteration)
@@ -133,7 +141,7 @@ def predict_xml(args, dirs, wsi, iteration):
 
     # figure out the number of classes
     if args.classNum == 0:
-        annotatedXMLs=glob(args.base_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
+        annotatedXMLs=glob(args.data_dir + '/data/' + args.project + dirs['training_data_dir'] + str(iteration-1) + '/*.xml')
         classes = []
         for xml in annotatedXMLs:
             classes.append(get_num_classes(xml))
@@ -149,15 +157,11 @@ def predict_xml(args, dirs, wsi, iteration):
         print('Chop SUEY!\n')
     else:
         basename = os.path.splitext(wsi)[0]
-
-        if wsi.split('.')[-1] != 'tif':
-            slide=getWsi(wsi)
-            # get image dimensions
-            dim_x, dim_y=slide.dimensions
-        else:
-            im = Image.open(wsi)
-            dim_x, dim_y=im.size
-
+        
+        slide=getWsi(wsi)
+        # get image dimensions
+        dim_x, dim_y=slide.dimensions
+        
         fileID=basename.split('/')
         dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
         test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
@@ -168,7 +172,7 @@ def predict_xml(args, dirs, wsi, iteration):
     make_folder(dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction')
 
     test_data_list = fileID + '_images' + '.txt'
-    modeldir = args.base_dir + '/data/' + args.project + dirs['modeldir'] + str(iteration) + '/HR'
+    modeldir = args.data_dir + '/data/' + args.project + dirs['modeldir'] + str(iteration) + '/HR'
     test_step = get_test_step(modeldir)
 
     print("starting prediction using model: \n\t" + modeldir + '/' + str(test_step) + "\n")
@@ -237,7 +241,7 @@ def predict_xml(args, dirs, wsi, iteration):
         rmtree(dirs['outDir']+fileID)
 
 def get_iteration(args):
-    currentmodels=os.listdir(args.base_dir + '/data/' + args.project + '/MODELS/')
+    currentmodels=os.listdir(args.data_dir + '/data/' + args.project + '/MODELS/')
 
     if not currentmodels:
         return 'none'
@@ -268,11 +272,6 @@ def restart_line(): # for printing chopped image labels in command line
     sys.stdout.write('\r')
     sys.stdout.flush()
 
-def getWsi(path): #imports a WSI
-    import openslide
-    slide = openslide.OpenSlide(path)
-    return slide
-
 def file_len(fname): # get txt file length (number of lines)
     with open(fname) as f:
         for i, l in enumerate(f):
@@ -288,13 +287,10 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     print('\nopening: ' + wsi)
     basename = os.path.splitext(wsi)[0]
 
-    if wsi.split('.')[-1] != 'tif':
-        slide=getWsi(wsi)
-        # get image dimensions
-        dim_x, dim_y=slide.dimensions
-    else:
-        im = Image.open(wsi)
-        dim_x, dim_y=im.size
+    slide=getWsi(wsi)
+    # get image dimensions
+    dim_x, dim_y=slide.dimensions
+    print('\tImage dimensions: X: ' + str(dim_x) + ' Y: ' + str(dim_y) + '\n')
 
     fileID=basename.split('/')
     dirs['fileID'] = fileID=fileID[len(fileID)-1].replace(' ', '_')
@@ -325,18 +321,38 @@ def chop_suey(wsi, dirs, downsample, region_size, step, args): # chop wsi
     f.close()
 
     # get non white regions
-    choppable_regions = get_choppable_regions(wsi=wsi, index_x=index_x, index_y=index_y, boxSize=region_size,white_percent=args.white_percent)
-
+    choppable_regions = get_choppable_regions(wsi=wsi, index_x=index_x, index_y=index_y, boxSize=region_size, white_percent=args.white_percent)
     print('saving region:')
 
     num_cores = multiprocessing.cpu_count()
-
     Parallel(n_jobs=num_cores, backend='threading')(delayed(chop_wsi)(yStart=i, xStart=j, idxx=idxx, idxy=idxy, f_name=f_name, f2_name=f2_name, dirs=dirs, downsample=downsample, region_size=region_size, args=args, wsi=wsi, choppable_regions=choppable_regions) for idxy, i in enumerate(index_y) for idxx, j in enumerate(index_x))
 
     test_num_steps = file_len(dirs['outDir'] + fileID + dirs['txt_save_dir'] + fileID + '_images' + ".txt")
     print('\n\t' + str(test_num_steps) +' image regions chopped')
 
     return fileID, test_num_steps
+
+def debug_patch(patch, tag, dirs):
+    print(f"[DEBUG] {tag} shape={patch.shape} dtype={patch.dtype} "
+          f"min={patch.min()} max={patch.max()} mean={patch.mean()}")
+
+    # Optionally dump one patch as an image to inspect
+
+    out_dir = dirs['outDir'] + dirs['fileID'] + dirs['debug_dir']
+    os.makedirs(out_dir, exist_ok=True)
+
+    p = patch
+    if np.issubdtype(p.dtype, np.floating):
+        p = np.clip(p, 0, 1)
+        p = (p * 255).astype(np.uint8)
+    elif p.dtype != np.uint8:
+        p = np.clip(p, 0, 255).astype(np.uint8)
+
+    if p.ndim == 3 and p.shape[0] in (1, 3) and p.shape[-1] not in (1, 3):
+        # convert CHW → HWC if needed
+        p = np.moveaxis(p, 0, -1)
+
+    imageio.imwrite(os.path.join(out_dir, f"{tag}.png"), p)
 
 def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, region_size, args, wsi, choppable_regions): # perform cutting in parallel
     if choppable_regions[idxy, idxx] != 0:
@@ -347,15 +363,10 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
         xLen=xEnd-xStart
         yLen=yEnd-yStart
 
-        if wsi.split('.') != 'tif':
-            slide = getWsi(wsi)
-            subsect= np.array(slide.read_region((xStart,yStart),0,(xLen,yLen)))
-            subsect=subsect[:,:,:3]
-
-        else:
-            subsect_ = imread(wsi)[yStart:yEnd, xStart:xEnd, :3]
-            subsect = np.zeros([region_size,region_size,3])
-            subsect[0:subsect_.shape[0], 0:subsect_.shape[1], :] = subsect_
+        slide = getWsi(wsi)
+        tile = slide.read_region((xStart, yStart), level=0, size=(region_size, region_size))
+        tile = tile.convert("RGB")
+        subsect = np.array(tile, dtype=np.uint8)
 
         imageIter = str(xStart)+str(yStart)
 
@@ -379,7 +390,9 @@ def chop_wsi(yStart, xStart, idxx, idxy, f_name, f2_name, dirs, downsample, regi
         directory = dirs['outDir'] + dirs['fileID'] + dirs['img_save_dir'] + dirs['chopped_dir']
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            imageio.imwrite(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt,subsect)
+            if np.issubdtype(subsect.dtype, np.floating):
+                subsect = (np.clip(subsect, 0, 1) * 255).astype(np.uint8)
+            imageio.imwrite(directory + dirs['fileID'] + str(imageIter) + args.imBoxExt, subsect)
 
         f2.write(dirs['fileID'] + str(imageIter) + args.imBoxExt + '\n')
         f.close()

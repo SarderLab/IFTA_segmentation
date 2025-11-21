@@ -30,14 +30,14 @@ main code for training semantic segmentation of WSI iteratively
 
 def main(args):
 
-    from InitializeFolderStructure import initFolder, purge_training_set, prune_training_set
+    from Codes.InitializeFolderStructure import initFolder, purge_training_set, prune_training_set
     if args.one_network == 'True' or args.one_network=='true' or args.one_network=='TRUE':
-        from IterativeTraining_1X import IterateTraining
-        from IterativePredict_1X import predict, validate
+        from Codes.IterativeTraining_1X import IterateTraining
+        from Codes.IterativePredict_1X import predict, validate
     else:
-        from evolve_predictions import evolve
-        from IterativeTraining import IterateTraining
-        from IterativePredict import predict, validate
+        from Codes.evolve_predictions import evolve
+        from Codes.IterativeTraining import IterateTraining
+        from Codes.IterativePredict import predict, validate
 
     # for teaching young segmentations networks
     starttime = time.time()
@@ -72,13 +72,13 @@ def main(args):
 
 def savetime(args, starttime):
     if args.option in ['new', 'New']:
-        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'w') as timefile:
+        with open(args.data_dir + '/data/' + args.project + '/runtime.txt', 'w') as timefile:
             timefile.write('option' +'\t'+ 'time' +'\t'+ 'epochs_LR' +'\t'+ 'epochs_HR' +'\t'+ 'aug_LR' +'\t'+ 'aug_HR' +'\t'+ 'overlap_percentLR' +'\t'+ 'overlap_percentHR')
     if args.option in ['train', 'Train']:
-        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
+        with open(args.data_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
             timefile.write('\n' + args.option +'\t'+ str(time.time()-starttime) +'\t'+ str(args.epoch_LR) +'\t'+ str(args.epoch_HR) +'\t'+ str(args.aug_LR) +'\t'+ str(args.aug_HR) +'\t'+ str(args.overlap_percentLR) +'\t'+ str(args.overlap_percentHR))
     if args.option in ['predict', 'Predict']:
-        with open(args.base_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
+        with open(args.data_dir + '/data/' + args.project + '/runtime.txt', 'a') as timefile:
             timefile.write('\n' + args.option +'\t'+ str(time.time()-starttime))
 
 
@@ -102,7 +102,8 @@ if __name__ == '__main__':
     # automatically generated
     parser.add_argument('--base_dir', dest='base_dir', default=os.getcwd(), type=str,
         help='base directory of code folder')
-
+    parser.add_argument('--data_dir', dest='data_dir', required=True ,type=str,
+        help='directory containing whole slide images under project name')
 
     ##### Args for training / prediction ####################################################
     parser.add_argument('--batch_size', dest='batch_size', default=2 ,type=int,

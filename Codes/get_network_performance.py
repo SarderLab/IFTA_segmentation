@@ -1,6 +1,6 @@
 import numpy as np
 import getWsi
-from xml_to_mask import xml_to_mask
+from Codes.xml_to_mask import xml_to_mask
 from joblib import Parallel, delayed
 import multiprocessing
 from PIL import Image

@@ -2,13 +2,13 @@
 #SBATCH --account=pinaki.sarder
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem-per-cpu=16gb
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=64gb
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=1
 #SBATCH --time=72:00:00
-#SBATCH --output=logs/slurm_log_%j.out
-#SBATCH --job-name="ifta-dds-jhu"
+#SBATCH --output=logs/ifta_seg__%j.out
+#SBATCH --job-name="new_ifta"
 
 
 #SBATCH --mail-type=END,FAIL
@@ -29,17 +29,19 @@ module load conda
 conda activate ifta_tf215
 
 USER=anish.tatke
-PROJECT=ifta-dds-jhu
+PROJECT=new_ifta
+
+DATA_DIR=/orange/pinaki.sarder/$USER/IFTA_Seg
 
 
 python segmentation_school.py \
-    --base_dir /orange/pinaki.sarder/$USER/IFTA_Seg/data \
+    --data_dir $DATA_DIR \
     --option predict \
-    --project BrandonsData \
+    --project JamieData \
     --encoder_name deeplab \
     --one_network True \
     --batch_size 2 \
     --boxSizeHR 3000 \
     --classNum 4 \
     --overlap_percentHR 0.5 \
-    --save_outputs True \
+    --wsi_ext .tif \
