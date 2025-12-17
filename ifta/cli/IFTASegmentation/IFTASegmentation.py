@@ -58,7 +58,7 @@ def main(args):
     output_annotation_name = args.output_annotation_name.replace(" ", "_")
 
     print("Input file: {}".format(input_file))
-    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --wsi_ext {} --girderApiUrl {} --girderToken {} --input_file '{}' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
+    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --wsi_ext {} --girderApiUrl {} --girderToken {} --input_file \'{}\' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
         project_name,
         'predict',
         base_dir,
