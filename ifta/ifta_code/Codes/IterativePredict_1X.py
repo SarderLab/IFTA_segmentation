@@ -201,10 +201,18 @@ def predict_xml(args, dirs, wsi, iteration):
 
     print("DeepLab command:", ' '.join(deeplab_cmd))
     print(f"Processing {test_num_steps} images in {num_batches} batches of {batch_size}")
-    result = subprocess.run(deeplab_cmd)
+    result = subprocess.run(deeplab_cmd, stderr=subprocess.PIPE, text=True)
+
+    if result.stderr:
+        print("DeepLab stderr:\n", result.stderr, flush=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"DeepLab prediction failed for {wsi} (exit code {result.returncode}). Aborting reconstruction.")
+        signal_msg = " (SIGSEGV — likely GPU OOM or corrupt patch)" if result.returncode == -11 else ""
+        stderr_tail = result.stderr[-2000:] if result.stderr else "(no stderr captured)"
+        raise RuntimeError(
+            f"DeepLab prediction failed for {wsi} (exit code {result.returncode}){signal_msg}.\n"
+            f"stderr tail:\n{stderr_tail}"
+        )
 
     # Check how many mask files were generated
     prediction_dir = dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction'
@@ -394,7 +402,7 @@ def un_suey(dirs, args): # reconstruct wsi from predicted masks
     yDim = int(float((lines[2].split(': ')[1]).split('\n')[0]))
 
     # make wsi mask
-    wsiMask = np.zeros([yDim, xDim]).astype(np.uint8)
+    wsiMask = np.zeros([yDim, xDim], dtype=np.uint8)
 
     # read image regions
     for regionNum in range(7, np.size(lines)):
@@ -451,7 +459,7 @@ def xml_suey(wsiMask, args, downsample, glob_offset):
     # print output
     print('\t Working on: annotationID ' + str(annotation_index))
     # get only 1 class binary mask
-    binary_mask = np.zeros(np.shape(wsiMask)).astype('uint8')
+    binary_mask = np.zeros(np.shape(wsiMask), dtype='uint8')
     binary_mask[wsiMask == annotation_index] = 1
     print('Binary_mask ==', np.unique(binary_mask))
 

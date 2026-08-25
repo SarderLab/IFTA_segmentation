@@ -462,7 +462,7 @@ def crop_suey(label_offsets, dirs, args, classNum, iter, idx):
 
         for value in np.unique(mask_image)[1:]:
             # get only 1 class binary mask
-            binary_mask = np.zeros(np.shape(mask_image)).astype('uint8')
+            binary_mask = np.zeros(np.shape(mask_image), dtype='uint8')
             binary_mask[mask_image == value] = 1
 
             # add mask to xml

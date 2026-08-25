@@ -642,7 +642,7 @@ def crop_suey(wsiMask,label_offsets, dirs, args, classNum, downsample):
 
 
     for classregion in range(1,classNum):
-        binaryMask = np.zeros(np.shape(wsiMask)).astype('uint8')
+        binaryMask = np.zeros(np.shape(wsiMask), dtype='uint8')
         binaryMask[wsiMask == classregion] = 1
         pointsList = get_contour_points(binaryMask, args=args, downsample=downsample)
 
