@@ -29,10 +29,9 @@ def main():
 
     client = StorageClient(storage_api_url, job_auth_token)
 
-    input_file = f'{item_id}.svs'
-    input_path = os.path.join(base_dir, input_file)
-    print(f'Downloading input for item {item_id} to {input_path}')
-    client.download_input(item_id, input_path)
+    print(f'Downloading input for item {item_id} to {base_dir}')
+    input_path = client.download_input(item_id, base_dir)
+    input_file = os.path.basename(input_path)
 
     file_ext = str(os.path.splitext(input_file)[1].lower())
     if file_ext not in ['.tif', '.svs']:
