@@ -98,12 +98,13 @@ if __name__ == '__main__':
     parser.add_argument('--base_dir', dest='base_dir', required=False, default=None, type=str, help='base directory of code folder')
     parser.add_argument('--basedir', dest='basedir', default=None, type=str, help='explicit base directory override (takes precedence over auto-derive from --input_files)')
     parser.add_argument('--model', dest='model', required=True, type=str, help='path to model file')
-    parser.add_argument('--girderApiUrl', dest='girderApiUrl', required=True, type=str, help='Girder API URL')
-    parser.add_argument('--girderToken', dest='girderToken', required=True, type=str, help='Girder API token')
-    parser.add_argument('--girder_api_url', dest='girder_api_url', default=None, type=str, help='Girder API URL for progress reporting (forwarded to DeepLab)')
-    parser.add_argument('--girder_token', dest='girder_token', default=None, type=str, help='Girder API token for progress reporting (forwarded to DeepLab)')
-    parser.add_argument('--girder_job_id', dest='girder_job_id', default=None, type=str, help='Girder job ID for progress reporting (forwarded to DeepLab)')
-    parser.add_argument('--girderFolderId', dest='girderFolderId', required=True, type=str, help='Girder Folder ID')
+    # retire-girder-dependency: girderApiUrl/girderToken/girderFolderId replaced by the first-party
+    # storage API + per-job JWT (see IFTASegmentation.py, storage_client.py). girder_api_url/
+    # girder_token/girder_job_id (optional Deeplab progress-reporting forwarding, model.py) are no
+    # longer forwarded — that reporting path degrades to a no-op without them, untouched otherwise.
+    parser.add_argument('--storage_api_url', dest='storage_api_url', required=True, type=str, help='First-party storage API base URL')
+    parser.add_argument('--job_auth_token', dest='job_auth_token', required=True, type=str, help='Per-job scoped JWT for the storage API')
+    parser.add_argument('--item_id', dest='item_id', required=True, type=str, help='Item ID this job is scoped to')
     parser.add_argument('--output_annotation_name', dest='output_annotation_name', default='ifta', type=str,
                         help='Name for the output annotation')
 

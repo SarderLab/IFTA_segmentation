@@ -59,9 +59,9 @@ setup(
         'opencv-python-headless>=4.7,<5.0',
         'openslide-python>=1.2,<2.0',
         'pyvips>=2.2,<3.0',
-        'girder-slicer-cli-web>=1.4,<2.0',
-        'girder-client>=3.1,<4.0',
-        'ctk-cli',
+        # retire-girder-dependency: girder-slicer-cli-web/girder-client/ctk-cli dropped —
+        # I/O now goes through storage_client.py (StorageClient) against the first-party storage API
+        'requests',
         'dask[dataframe]>=2023.1.0,<2025.0',
         'distributed>=2023.1.0,<2025.0',
         'termcolor>=2.0,<3.0',

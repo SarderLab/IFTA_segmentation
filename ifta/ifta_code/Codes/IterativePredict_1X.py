@@ -16,8 +16,12 @@ import imageio
 from skimage.transform import resize
 from shutil import rmtree
 import json
-import girder_client
 from pathlib import Path
+# retire-girder-dependency: replaced by the first-party storage API client. This file lives at
+# ifta/ifta/ifta_code/Codes/; the client lives at ifta/ifta/cli/IFTASegmentation/ — no existing
+# package import path reaches it, so it's added to sys.path directly.
+sys.path.append(str(Path(__file__).resolve().parents[2] / 'cli' / 'IFTASegmentation'))
+from storage_client import StorageClient
 
 sys.path.append(os.getcwd()+'/Codes')
 
@@ -470,27 +474,20 @@ def xml_suey(wsiMask, args, downsample, glob_offset):
         Annotations = xml_add_region(Annotations=Annotations, pointList=pointList, annotationID=annotation_index)
 
     # save xml
-    upload_to_girder(args, Annotations)
+    upload_to_storage(args, Annotations)
 
-def upload_to_girder(args, Annotations):
-    print(f"Using data from girder_client Folder: {args.project}")
+def upload_to_storage(args, Annotations):
+    # retire-girder-dependency: args.item_id is already known directly (no more folder-listing
+    # dance to look up the item by filename — that was only needed because the old Girder job args
+    # only carried a folder ID, not the item ID itself)
+    print(f"Uploading results for item: {args.item_id}")
 
-    file_name = args.input_file
-    gc = girder_client.GirderClient(apiUrl=args.girderApiUrl)
-    gc.setToken(args.girderToken)
+    client = StorageClient(args.storage_api_url, args.job_auth_token)
 
-    files = list(gc.listItem(args.girderFolderId))
-    item_dict = dict()
-    for file in files:
-        d = {file['name']: file['_id']}
-        item_dict.update(d)
-
-    print(item_dict)
-
-    print('uploading annotation to girder...')
+    print('uploading annotation to storage API...')
     annots = convert_xml_json(Annotations, [args.output_annotation_name])
     for annot in annots:
-        _ = gc.post(path='annotation', parameters={'itemId': item_dict[file_name]}, data=json.dumps(annot))
+        _ = client.post(path='annotation', parameters={'itemId': args.item_id}, data=json.dumps(annot))
 
     print(f'annotation {args.output_annotation_name} uploaded...\n')
 

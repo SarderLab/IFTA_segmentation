@@ -86,8 +86,9 @@ RUN ${PYTHON_BIN} --version && ${PYTHON_BIN} -m pip --version && ${PYTHON_BIN} -
 WORKDIR "${ifta_path}/ifta/cli"
 LABEL entry_path="${ifta_path}/ifta/cli"
 
-# Test CLI discovery (optional; keep if you want to fail fast during build)
-RUN ${PYTHON_BIN} -m slicer_cli_web.cli_list_entrypoint --list_cli && \
-    ${PYTHON_BIN} -m slicer_cli_web.cli_list_entrypoint IFTASegmentation --help
+# retire-girder-dependency: no more slicer_cli_web CLI-XML entrypoint to smoke-test at build time;
+# import the rewritten entrypoint's dependencies instead so a broken numpy/tensorflow/openslide
+# combination still fails the build the same way the old check did
+RUN ${PYTHON_BIN} -c "import numpy, tensorflow, openslide, requests"
 
 ENTRYPOINT ["/bin/bash", "docker-entrypoint.sh"]
