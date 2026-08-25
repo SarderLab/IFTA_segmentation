@@ -14,7 +14,8 @@ RUN echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING THE BUILD !!!!!!!!!!!!!!!!!!
 
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-    TF_CPP_MIN_LOG_LEVEL=2
+    TF_CPP_MIN_LOG_LEVEL=2 \
+    TF_FORCE_GPU_ALLOW_GROWTH=true
 
 # Remove any stale CUDA repo lists if present in this base (harmless if absent)
 RUN rm -f /etc/apt/sources.list.d/cuda*.list || true

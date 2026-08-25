@@ -36,10 +36,6 @@ def main(args):
 
     print_args(args)
 
-    project_name = args.base_dir.split('/')[-1]
-    girder_folder_id = args.base_dir.split('/')[-2]
-    print("Project name: {}".format(project_name))
-
     if os.path.exists("/mnt/girder_worker"):
         print("Using /mnt/girder_worker as working directory")
         base_dir = '{}/{}'.format('/mnt/girder_worker', os.listdir('/mnt/girder_worker')[0])
@@ -47,38 +43,54 @@ def main(args):
         print("Using /tmp/ as working directory")
         base_dir = os.getenv("TMPDIR")
 
+    project_name = base_dir.split('/')[-1]
+    print("Project name: {}".format(project_name))
+
     gc = get_girder_client(args)
     input_image_info = get_image_info(gc, args.input_file)
     input_file = input_image_info['name']
+    item_info = gc.getItem(input_image_info['itemId'])
+    girder_folder_id = item_info['folderId']
+    print("Girder folder ID: {}".format(girder_folder_id))
     file_ext = str(os.path.splitext(input_file)[1].lower())
     if file_ext not in ['.tif', '.svs']:
         raise ValueError("Unsupported file format: {}. Only .tif and .svs are supported.".format(file_ext))
-    
+
     input_path = download_image(gc, input_image_info, base_dir)
     output_annotation_name = args.output_annotation_name.replace(" ", "_")
+    batch_size = min(int(args.batch_size), 16)
+    job_id = os.environ.get('GIRDER_JOB_ID')
 
     print("Input file: {}".format(input_file))
-    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --base_dir {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --wsi_ext {} --girderApiUrl {} --girderToken {} --input_file \'{}\' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
+    cmd = "python ../ifta_code/segmentation_school.py --project {} --option {} --model {} --boxSizeHR {} --overlap_percentHR {} --classNum {} --one_network {} --encoder_name {} --wsi_ext {} --girderApiUrl {} --girderToken {} --input_file \'{}\' --input_path '{}' --girderFolderId {} --output_annotation_name {}".format(
         project_name,
         'predict',
-        base_dir,
         args.model,
         args.boxSizeHR,
         args.overlap_percentHR,
-        4, 
-        'True', 
-        'deeplab', 
+        4,
+        'True',
+        'deeplab',
         file_ext,
-        args.girderApiUrl, 
-        args.girderToken, 
+        args.girderApiUrl,
+        args.girderToken,
         input_file,
         input_path,
         girder_folder_id,
         output_annotation_name
     )
+
+    cmd += ' --batch_size {}'.format(batch_size)
+
+    if job_id:
+        cmd += ' --girder_job_id {} --girder_api_url {} --girder_token {}'.format(
+            job_id, args.girderApiUrl, args.girderToken)
+
     print(cmd)
     sys.stdout.flush()
     rtn_code = call(cmd, shell=True)
+    if rtn_code != 0:
+        raise RuntimeError(f"Segmentation pipeline failed with exit code {rtn_code}")
 
 
 if __name__ == "__main__":

@@ -94,10 +94,15 @@ if __name__ == '__main__':
                         help='Starting directory to contain training project')
     parser.add_argument('--input_path', dest='input_path', required=True, type=str, help='path to input image or folder of images')
     parser.add_argument('--input_file', dest='input_file', required=True, type=str, help='name of input image or folder of images')
-    parser.add_argument('--base_dir', dest='base_dir', required=True, type=str, help='base directory of code folder')
+    parser.add_argument('--input_files', dest='input_files', default=None, type=str, help='full path to a single WSI file; base_dir is auto-derived from its parent directory if --basedir is not set')
+    parser.add_argument('--base_dir', dest='base_dir', required=False, default=None, type=str, help='base directory of code folder')
+    parser.add_argument('--basedir', dest='basedir', default=None, type=str, help='explicit base directory override (takes precedence over auto-derive from --input_files)')
     parser.add_argument('--model', dest='model', required=True, type=str, help='path to model file')
     parser.add_argument('--girderApiUrl', dest='girderApiUrl', required=True, type=str, help='Girder API URL')
     parser.add_argument('--girderToken', dest='girderToken', required=True, type=str, help='Girder API token')
+    parser.add_argument('--girder_api_url', dest='girder_api_url', default=None, type=str, help='Girder API URL for progress reporting (forwarded to DeepLab)')
+    parser.add_argument('--girder_token', dest='girder_token', default=None, type=str, help='Girder API token for progress reporting (forwarded to DeepLab)')
+    parser.add_argument('--girder_job_id', dest='girder_job_id', default=None, type=str, help='Girder job ID for progress reporting (forwarded to DeepLab)')
     parser.add_argument('--girderFolderId', dest='girderFolderId', required=True, type=str, help='Girder Folder ID')
     parser.add_argument('--output_annotation_name', dest='output_annotation_name', default='ifta', type=str,
                         help='Name for the output annotation')
@@ -113,7 +118,7 @@ if __name__ == '__main__':
                         help='encoder options are res50, res101, or deeplab')
 
     # Args for training / prediction ####################################################
-    parser.add_argument('--batch_size', dest='batch_size', default=2 ,type=int,
+    parser.add_argument('--batch_size', dest='batch_size', default=8, type=int,
         help='batch size for prediction')
     parser.add_argument('--gpu_num', dest='gpu_num', default=2, type=int,
                         help='number of GPUs avalable')
@@ -208,4 +213,16 @@ if __name__ == '__main__':
                         help='padded region for low resolution region extraction')
 
     args = parser.parse_args()
+
+    # Resolve base_dir: explicit --basedir > --base_dir > derived from --input_path
+    if args.basedir is not None:
+        args.base_dir = args.basedir
+    elif args.base_dir is None:
+        if args.input_path is not None:
+            args.base_dir = os.path.dirname(os.path.abspath(args.input_path))
+        elif args.input_files is not None:
+            args.base_dir = os.path.dirname(os.path.abspath(args.input_files))
+        else:
+            raise ValueError("--base_dir is required when --input_path is not provided")
+
     main(args=args)

@@ -286,6 +286,10 @@ def get_iteration(args):
 
 def get_test_step(modeldir):
     pretrains=glob(modeldir + '/*.ckpt*')
+
+    if not pretrains:
+        raise FileNotFoundError(f"No checkpoint files found in model directory: {modeldir}")
+
     maxmodel=0
     for modelfiles in pretrains:
         modelID=modelfiles.split('.')[-2].split('-')[1]

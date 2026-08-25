@@ -18,20 +18,13 @@
       <channel>input</channel>
       <index>0</index>
     </image>
-    <directory>
-      <name>base_dir</name>
-      <label>Base Directory</label>
-      <description>Base Directory for the image</description>
-      <channel>input</channel>
-      <index>1</index>
-    </directory>
     <integer>
       <name>boxSizeHR</name>
       <label>boxSizeHR</label>
       <description> size of high resolution blocks</description>
       <default>3000</default>
       <channel>input</channel>
-      <index>2</index>
+      <index>1</index>
     </integer>
     <double>
       <name>overlap_percentHR</name>
@@ -39,14 +32,14 @@
       <description>overlap percentage of high resolution blocks [0-1]</description>
       <default>0.5</default>
       <channel>input</channel>
-      <index>3</index>
+      <index>2</index>
     </double>
     <directory>
       <name>model</name>
       <label>model directory</label>
       <description>model directory</description>
       <channel>input</channel>
-      <index>4</index>
+      <index>3</index>
     </directory>
     <string>
       <name>output_annotation_name</name>
@@ -54,8 +47,20 @@
       <description>Name for the output annotation</description>
       <default>ifta</default>
       <channel>input</channel>
-      <index>5</index>
+      <index>4</index>
     </string>
+  </parameters>
+  <parameters advanced="true">
+    <label>Advanced</label>
+    <description>Advanced parameters for performance tuning.</description>
+    <integer>
+      <name>batch_size</name>
+      <label>Batch Size</label>
+      <description>Number of image tiles processed per GPU call. Higher values are faster but use more GPU memory. Recommended: 2 for 24GB GPU with 3000px tiles.</description>
+      <default>2</default>
+      <channel>input</channel>
+      <index>5</index>
+    </integer>
   </parameters>
   <parameters advanced="true">
     <label>Girder API URL and Key</label>

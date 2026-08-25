@@ -8,6 +8,7 @@ import warnings
 import time
 from PIL import Image
 from glob import glob
+import subprocess
 from subprocess import call
 from joblib import Parallel, delayed
 from skimage.io import imread
@@ -193,26 +194,27 @@ def predict_xml(args, dirs, wsi, iteration):
         '--logdir', dirs['logging_dir']
     ]
 
+    for attr, flag in [('girder_api_url', '--girder_api_url'), ('girder_token', '--girder_token'), ('girder_job_id', '--girder_job_id')]:
+        val = getattr(args, attr, None)
+        if val:
+            deeplab_cmd += [flag, str(val)]
+
     print("DeepLab command:", ' '.join(deeplab_cmd))
     print(f"Processing {test_num_steps} images in {num_batches} batches of {batch_size}")
-    return_code = call(deeplab_cmd)
-    
-    # Check if prediction was successful
-    if return_code != 0:
-        print(f"ERROR: DeepLab prediction failed with return code {return_code}")
-        return
-    
+    result = subprocess.run(deeplab_cmd)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"DeepLab prediction failed for {wsi} (exit code {result.returncode}). Aborting reconstruction.")
+
     # Check how many mask files were generated
     prediction_dir = dirs['outDir'] + fileID + dirs['img_save_dir'] + 'prediction'
     if os.path.exists(prediction_dir):
         mask_files = glob(prediction_dir + '/*_mask.png')
         print(f"Generated {len(mask_files)} mask files out of {test_num_steps} expected")
         if len(mask_files) == 0:
-            print("ERROR: No mask files were generated!")
-            return
+            raise RuntimeError(f"DeepLab prediction generated no mask files for {wsi}. Aborting reconstruction.")
     else:
-        print("ERROR: Prediction directory was not created!")
-        return
+        raise RuntimeError(f"Prediction directory was not created for {wsi}. Aborting reconstruction.")
 
     # un chop
     print('\nreconstructing wsi map ...\n')
@@ -252,6 +254,9 @@ def get_iteration(args):
 
 def get_test_step(modeldir):
     pretrains=glob(modeldir + '/*.ckpt*')
+
+    if not pretrains:
+        raise FileNotFoundError(f"No checkpoint files found in model directory: {modeldir}")
 
     maxmodel=0
     for modelfiles in pretrains:

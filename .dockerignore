@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environment
+env/
+venv/
+.venv/
+
+# Data and model files
+TxR01/
+*.svs
+*.tif
+*.tiff
+*.ndpi
+*.scn
+*.mrxs
+*.sif
+slurm_log.out
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# OpenSpec / Claude
+openspec/
+.claude/
+
+# Docs
+*.pdf
+README.md
+Pipeline.txt

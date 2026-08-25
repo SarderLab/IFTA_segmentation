@@ -6,6 +6,12 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
+try:
+	from tqdm import tqdm as _tqdm
+	HAS_TQDM = True
+except ImportError:
+	HAS_TQDM = False
+
 # Handle both relative and absolute imports
 try:
 	# Relative imports when used as a package
@@ -46,16 +52,6 @@ class Model(object):
 	def __init__(self, conf):
 		self.conf = conf
 		# TF2.x uses eager execution by default, no session needed
-		
-		# Set up GPU memory growth
-		gpus = tf.config.experimental.list_physical_devices('GPU')
-		if gpus:
-			try:
-				for gpu in gpus:
-					tf.config.experimental.set_memory_growth(gpu, True)
-			except RuntimeError as e:
-				print(f"GPU configuration error: {e}")
-		
 		# Initialize metrics for TF2
 		self.accuracy_metric = tf.keras.metrics.Accuracy()
 		self.miou_metric = tf.keras.metrics.MeanIoU(num_classes=conf.num_classes)
@@ -321,24 +317,51 @@ class Model(object):
 		self.compute_IoU_per_class(confusion_matrix)
 
 	# prediction
-	def predict(self):		
+	def predict(self):
+		self._predict_impl()
+
+	def _predict_impl(self):
 		# Setup model and data pipeline for prediction
 		self.prediction_setup()
-		
+
 		# Load checkpoint
 		checkpoint_path = os.path.join(self.conf.modeldir, 'deeplabv2')
 		self.load_checkpoint(checkpoint_path)
-		
+
 		# Get image name list
 		image_list, _ = read_labeled_image_list('', self.conf.test_data_list)
-		
+
 		# Create output directories
 		if not os.path.exists(self.conf.out_dir):
 			os.makedirs(self.conf.out_dir)
 			os.makedirs(self.conf.out_dir + '/prediction')
 			if self.conf.visual:
 				os.makedirs(self.conf.out_dir + '/visual_prediction')
-		
+
+		# Setup Girder progress reporting if credentials provided
+		girder_gc = None
+		girder_job_id = getattr(self.conf, 'girder_job_id', None)
+		if girder_job_id and getattr(self.conf, 'girder_api_url', None) and getattr(self.conf, 'girder_token', None):
+			try:
+				from girder_client import GirderClient
+				girder_gc = GirderClient(apiUrl=self.conf.girder_api_url)
+				girder_gc.setToken(self.conf.girder_token)
+			except Exception:
+				girder_gc = None
+
+		total_images = len(image_list)
+		total_steps = min(self.conf.test_num_steps, -(-total_images // self.conf.batch_size))
+
+		pbar = _tqdm(
+			total=total_images,
+			desc='Total WSI progress',
+			unit='image',
+			colour='green',
+			file=sys.stdout,
+			dynamic_ncols=False,
+			ncols=80,
+		) if HAS_TQDM else None
+
 		# Predict!
 		for step in range(self.conf.test_num_steps):
 			try:
@@ -354,6 +377,7 @@ class Model(object):
 			pred_classes = tf.argmax(predictions, axis=-1)
 
 			# Process each image in the batch
+			imgs_this_batch = 0
 			for i in range(batch_size):
 				# Convert to numpy for saving
 				pred_np = pred_classes.numpy()[i]  # Get i-th image in batch
@@ -373,13 +397,34 @@ class Model(object):
 
 				# Save predictions for visualization
 				if self.conf.visual:
-					msk = decode_labels(tf.expand_dims(tf.expand_dims(pred_classes[i:i+1], axis=-1), axis=0), 
+					msk = decode_labels(tf.expand_dims(tf.expand_dims(pred_classes[i:i+1], axis=-1), axis=0),
 														num_classes=self.conf.num_classes)
 					im = Image.fromarray(msk[0], mode='RGB')
 					filename = f'/{img_name}_mask_visual.png'
 					im.save(self.conf.out_dir + '/visual_prediction' + filename)
-			if step % 100 == 0:
-				print('step {:d}'.format(step))
+
+				imgs_this_batch += 1
+				if pbar is not None:
+					pbar.update(1)
+
+			if pbar is None:
+				imgs_done = min((step + 1) * self.conf.batch_size, total_images)
+				pct = int(imgs_done / total_images * 100) if total_images > 0 else 0
+				print(f'Step {step + 1}/{total_steps} — {imgs_done}/{total_images} images ({pct}%)')
+				sys.stdout.flush()
+
+			if girder_gc and girder_job_id:
+				try:
+					imgs_done = min((step + 1) * self.conf.batch_size, total_images)
+					pct = int(imgs_done / total_images * 100) if total_images > 0 else 0
+					girder_gc.patch(f'/job/{girder_job_id}', data={
+						'progress': {'current': imgs_done, 'total': total_images, 'message': f'Predicting: {pct}%'}
+					})
+				except Exception:
+					pass
+
+		if pbar is not None:
+			pbar.close()
 
 		print('The output files have been saved to {}'.format(self.conf.out_dir))
 
@@ -454,11 +499,11 @@ class Model(object):
 			is_training=False
 		)
 		self.predict_dataset_iter = iter(self.predict_dataset)
-		
+
 		# Build model if not already built
 		if self.model is None:
 			self.build_model(input_shape=(None, None, 3))
-		
+
 		# Setup optimizers (needed for checkpoint loading)
 		self.setup_optimizers()
 
